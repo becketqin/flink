@@ -29,6 +29,7 @@ import org.apache.flink.streaming.connectors.kafka.internals.AbstractFetcher;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaCommitCallback;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionState;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.SerializedValue;
 
@@ -87,7 +88,7 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 			Properties kafkaProperties,
 			long pollTimeout,
 			MetricGroup subtaskMetricGroup,
-			MetricGroup consumerMetricGroup,
+			KafkaSourceMetrics kafkaSourceMetrics,
 			boolean useMetrics,
 			FlinkConnectorRateLimiter rateLimiter) throws Exception {
 		super(
@@ -98,8 +99,7 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 				processingTimeProvider,
 				autoWatermarkInterval,
 				userCodeClassLoader,
-				consumerMetricGroup,
-				useMetrics);
+				kafkaSourceMetrics);
 
 		this.deserializer = deserializer;
 		this.handover = new Handover();
@@ -113,7 +113,7 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 				getFetcherName() + " for " + taskNameWithSubtasks,
 				pollTimeout,
 				useMetrics,
-				consumerMetricGroup,
+				kafkaSourceMetrics,
 				subtaskMetricGroup,
 				rateLimiter);
 	}
@@ -133,7 +133,9 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 			while (running) {
 				// this blocks until we get the next records
 				// it automatically re-throws exceptions encountered in the consumer thread
-				final ConsumerRecords<byte[], byte[]> records = handover.pollNext();
+				final Handover.RecordsAndFetchTime recordsAndFetchTime = handover.pollNext();
+				final ConsumerRecords<byte[], byte[]> records = recordsAndFetchTime.records;
+				final long fetchedTime = recordsAndFetchTime.fetchedTime;
 
 				// get the records for each topic partition
 				for (KafkaTopicPartitionState<TopicPartition> partition : subscribedPartitionStates()) {
@@ -150,7 +152,8 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 							running = false;
 							break;
 						}
-
+						// Update metrics.
+						updateMetrics(record, fetchedTime);
 						// emit the actual record. this also updates offset state atomically
 						// and deals with timestamps and watermark generation
 						emitRecord(value, partition, record.offset(), record);

@@ -20,6 +20,8 @@ package org.apache.flink.streaming.connectors.kafka.internals;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
+import org.apache.flink.streaming.util.serialization.KeyedDeserializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 
 import kafka.api.FetchRequestBuilder;
@@ -96,6 +98,7 @@ class SimpleConsumerThread<T> extends Thread {
 	private final int bufferSize;
 	private final int reconnectLimit;
 	private final String clientId;
+	private final KafkaSourceMetrics kafkaSourceMetrics;
 
 	// exceptions are thrown locally
 	public SimpleConsumerThread(
@@ -106,7 +109,8 @@ class SimpleConsumerThread<T> extends Thread {
 			List<KafkaTopicPartitionState<TopicAndPartition>> seedPartitions,
 			ClosableBlockingQueue<KafkaTopicPartitionState<TopicAndPartition>> unassignedPartitions,
 			KafkaDeserializationSchema<T> deserializer,
-			long invalidOffsetBehavior) {
+			long invalidOffsetBehavior,
+			KafkaSourceMetrics kafkaSourceMetrics) {
 		this.owner = owner;
 		this.errorHandler = errorHandler;
 		this.broker = broker;
@@ -127,6 +131,7 @@ class SimpleConsumerThread<T> extends Thread {
 		this.reconnectLimit = getInt(config, "flink.simple-consumer-reconnectLimit", 3);
 		String groupId = config.getProperty("group.id", "flink-kafka-consumer-legacy-" + broker.id());
 		this.clientId = config.getProperty("client.id", groupId);
+		this.kafkaSourceMetrics = kafkaSourceMetrics;
 	}
 
 	public ClosableBlockingQueue<KafkaTopicPartitionState<TopicAndPartition>> getNewPartitionsQueue() {
@@ -352,6 +357,7 @@ class SimpleConsumerThread<T> extends Thread {
 
 							// If the message value is null, this represents a delete command for the message key.
 							// Log this and pass it on to the client who might want to also receive delete messages.
+							int size = 0;
 							byte[] valueBytes;
 							if (payload == null) {
 								deletedMessages++;
@@ -359,6 +365,7 @@ class SimpleConsumerThread<T> extends Thread {
 							} else {
 								valueBytes = new byte[payload.remaining()];
 								payload.get(valueBytes);
+								size += valueBytes.length;
 							}
 
 							// put key into byte array
@@ -369,7 +376,12 @@ class SimpleConsumerThread<T> extends Thread {
 								ByteBuffer keyPayload = msg.message().key();
 								keyBytes = new byte[keySize];
 								keyPayload.get(keyBytes);
+								size += keySize;
 							}
+
+							kafkaSourceMetrics.numBytesInPerSec.markEvent(size);
+							kafkaSourceMetrics.numRecordsInPerSec.markEvent();
+							kafkaSourceMetrics.recordSize.update(size);
 
 							final T value = deserializer.deserialize(
 								new ConsumerRecord<>(

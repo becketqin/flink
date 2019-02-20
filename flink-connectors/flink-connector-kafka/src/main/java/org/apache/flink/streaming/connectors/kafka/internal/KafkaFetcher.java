@@ -27,6 +27,7 @@ import org.apache.flink.streaming.connectors.kafka.internals.AbstractFetcher;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaCommitCallback;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionState;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.SerializedValue;
 
@@ -85,7 +86,7 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 		Properties kafkaProperties,
 		long pollTimeout,
 		MetricGroup subtaskMetricGroup,
-		MetricGroup consumerMetricGroup,
+		KafkaSourceMetrics kafkaSourceMetrics,
 		boolean useMetrics) throws Exception {
 		super(
 			sourceContext,
@@ -95,8 +96,7 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 			processingTimeProvider,
 			autoWatermarkInterval,
 			userCodeClassLoader,
-			consumerMetricGroup,
-			useMetrics);
+			kafkaSourceMetrics);
 
 		this.deserializer = deserializer;
 		this.handover = new Handover();
@@ -109,7 +109,7 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 			getFetcherName() + " for " + taskNameWithSubtasks,
 			pollTimeout,
 			useMetrics,
-			consumerMetricGroup,
+			kafkaSourceMetrics,
 			subtaskMetricGroup);
 	}
 

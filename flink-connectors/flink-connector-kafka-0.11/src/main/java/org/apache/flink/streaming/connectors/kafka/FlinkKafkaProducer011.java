@@ -30,7 +30,6 @@ import org.apache.flink.api.common.typeutils.SimpleTypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
 import org.apache.flink.api.java.ClosureCleaner;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.metrics.MetricGroup;
@@ -42,6 +41,8 @@ import org.apache.flink.streaming.connectors.kafka.internal.FlinkKafkaProducer;
 import org.apache.flink.streaming.connectors.kafka.internal.TransactionalIdsGenerator;
 import org.apache.flink.streaming.connectors.kafka.internal.metrics.KafkaMetricMutableWrapper;
 import org.apache.flink.streaming.connectors.kafka.internals.KeyedSerializationSchemaWrapper;
+import org.apache.flink.streaming.connectors.kafka.internals.MetricRecordingCallback;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSinkMetrics;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaDelegatePartitioner;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
@@ -53,7 +54,6 @@ import org.apache.flink.util.NetUtils;
 import org.apache.flink.shaded.guava18.com.google.common.collect.Lists;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -244,11 +244,10 @@ public class FlinkKafkaProducer011<IN>
 	 */
 	private Semantic semantic;
 
-	// -------------------------------- Runtime fields ------------------------------------------
+	/** The metrics for kafka sinks. */
+	protected KafkaSinkMetrics kafkaSinkMetrics;
 
-	/** The callback than handles error propagation or logging callbacks. */
-	@Nullable
-	private transient Callback callback;
+	// -------------------------------- Runtime fields ------------------------------------------
 
 	/** Errors encountered in the async producer are stored here. */
 	@Nullable
@@ -581,37 +580,6 @@ public class FlinkKafkaProducer011<IN>
 
 	// ----------------------------------- Utilities --------------------------
 
-	/**
-	 * Initializes the connection to Kafka.
-	 */
-	@Override
-	public void open(Configuration configuration) throws Exception {
-		if (logFailuresOnly) {
-			callback = new Callback() {
-				@Override
-				public void onCompletion(RecordMetadata metadata, Exception e) {
-					if (e != null) {
-						LOG.error("Error while sending record to Kafka: " + e.getMessage(), e);
-					}
-					acknowledgeMessage();
-				}
-			};
-		}
-		else {
-			callback = new Callback() {
-				@Override
-				public void onCompletion(RecordMetadata metadata, Exception exception) {
-					if (exception != null && asyncException == null) {
-						asyncException = exception;
-					}
-					acknowledgeMessage();
-				}
-			};
-		}
-
-		super.open(configuration);
-	}
-
 	@Override
 	public void invoke(KafkaTransactionState transaction, IN next, Context context) throws FlinkKafka011Exception {
 		checkErroneous();
@@ -645,7 +613,9 @@ public class FlinkKafkaProducer011<IN>
 			record = new ProducerRecord<>(targetTopic, null, timestamp, serializedKey, serializedValue);
 		}
 		pendingRecords.incrementAndGet();
-		transaction.producer.send(record, callback);
+		transaction.producer.send(
+			record,
+			new ErrorHandlingCallback(kafkaSinkMetrics, length(serializedKey) + length(serializedValue)));
 	}
 
 	@Override
@@ -766,6 +736,10 @@ public class FlinkKafkaProducer011<IN>
 
 	private void acknowledgeMessage() {
 		pendingRecords.decrementAndGet();
+	}
+
+	private int length(byte[] bytes) {
+		return bytes == null ? 0 : bytes.length;
 	}
 
 	/**
@@ -983,6 +957,8 @@ public class FlinkKafkaProducer011<IN>
 				}
 			}
 		}
+		kafkaSinkMetrics = new KafkaSinkMetrics(getRuntimeContext().getMetricGroup());
+
 		return producer;
 	}
 
@@ -1354,6 +1330,34 @@ public class FlinkKafkaProducer011<IN>
 		public NextTransactionalIdHint(int parallelism, long nextFreeTransactionalId) {
 			this.lastParallelism = parallelism;
 			this.nextFreeTransactionalId = nextFreeTransactionalId;
+		}
+	}
+
+
+	// --------------------------- producer callback class ----------------------
+
+	/**
+	 * A callback class that records the update the metrics and handles exceptions.
+	 *
+	 * <p>This class is a copy of {@link FlinkKafkaProducerBase.ErrorHandlingCallback}.
+	 */
+	private class ErrorHandlingCallback extends MetricRecordingCallback {
+
+		ErrorHandlingCallback(KafkaSinkMetrics kafkaSinkMetrics, int size) {
+			super(kafkaSinkMetrics, size);
+		}
+
+		@Override
+		public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+			super.onCompletion(recordMetadata, e);
+			if (e != null) {
+				if (logFailuresOnly) {
+					LOG.error("Error while sending record to Kafka: " + e.getMessage(), e);
+				} else {
+					asyncException = e;
+				}
+			}
+			acknowledgeMessage();
 		}
 	}
 }

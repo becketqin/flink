@@ -22,6 +22,7 @@ import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.connectors.kafka.internals.Kafka08PartitionDiscoverer;
 import org.apache.flink.util.NetUtils;
@@ -110,6 +111,7 @@ public class KafkaConsumer08Test {
 				Collections.singletonList("no op topic"), new SimpleStringSchema(), props);
 			StreamingRuntimeContext mockRuntimeContext = mock(StreamingRuntimeContext.class);
 			Mockito.when(mockRuntimeContext.isCheckpointingEnabled()).thenReturn(true);
+			Mockito.when(mockRuntimeContext.getMetricGroup()).thenReturn(new UnregisteredMetricsGroup());
 			consumer.setRuntimeContext(mockRuntimeContext);
 
 			consumer.open(new Configuration());
@@ -117,6 +119,7 @@ public class KafkaConsumer08Test {
 			fail();
 		}
 		catch (Exception e) {
+			e.printStackTrace();
 			assertTrue(e.getMessage().contains("Unable to retrieve any partitions"));
 		}
 	}
@@ -139,6 +142,7 @@ public class KafkaConsumer08Test {
 				Collections.singletonList("no op topic"), new SimpleStringSchema(), props);
 			StreamingRuntimeContext mockRuntimeContext = mock(StreamingRuntimeContext.class);
 			Mockito.when(mockRuntimeContext.isCheckpointingEnabled()).thenReturn(true);
+			Mockito.when(mockRuntimeContext.getMetricGroup()).thenReturn(new UnregisteredMetricsGroup());
 			consumer.setRuntimeContext(mockRuntimeContext);
 
 			consumer.open(new Configuration());
@@ -203,6 +207,7 @@ public class KafkaConsumer08Test {
 			RuntimeContext mockRuntimeContext = mock(RuntimeContext.class);
 			when(mockRuntimeContext.getIndexOfThisSubtask()).thenReturn(0);
 			when(mockRuntimeContext.getNumberOfParallelSubtasks()).thenReturn(1);
+			when(mockRuntimeContext.getMetricGroup()).thenReturn(new UnregisteredMetricsGroup());
 			return mockRuntimeContext;
 		}
 	}

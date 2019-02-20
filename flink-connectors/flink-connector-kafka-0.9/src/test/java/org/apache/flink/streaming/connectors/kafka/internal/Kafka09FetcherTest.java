@@ -29,6 +29,7 @@ import org.apache.flink.streaming.connectors.kafka.internals.KafkaCommitCallback
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaDeserializationSchemaWrapper;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionStateSentinel;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 import org.apache.flink.streaming.runtime.tasks.TestProcessingTimeService;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -130,8 +131,9 @@ public class Kafka09FetcherTest {
 				new Properties(),
 				0L,
 				new UnregisteredMetricsGroup(),
-				new UnregisteredMetricsGroup(),
-				false, null);
+				new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
+				false,
+				null);
 
 		// ----- run the fetcher -----
 
@@ -266,8 +268,9 @@ public class Kafka09FetcherTest {
 				new Properties(),
 				0L,
 				new UnregisteredMetricsGroup(),
-				new UnregisteredMetricsGroup(),
-				false, null);
+				new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
+				false,
+				null);
 
 		// ----- run the fetcher -----
 
@@ -381,8 +384,9 @@ public class Kafka09FetcherTest {
 				new Properties(),
 				0L,
 				new UnregisteredMetricsGroup(),
-				new UnregisteredMetricsGroup(),
-				false, null);
+				new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
+				false,
+				null);
 
 		// ----- run the fetcher -----
 

@@ -167,6 +167,11 @@ public class Kafka010ITCase extends KafkaConsumerTestBase {
 		runAutoOffsetRetrievalAndCommitToKafka();
 	}
 
+	@Test
+	public void testMetrics() throws Throwable {
+		runMetricsTest(true);
+	}
+
 	/**
 	 * Kafka 0.10 specific test, ensuring Timestamps are properly written to and read from Kafka.
 	 */

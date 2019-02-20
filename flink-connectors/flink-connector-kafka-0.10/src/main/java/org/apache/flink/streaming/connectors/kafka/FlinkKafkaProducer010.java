@@ -379,7 +379,7 @@ public class FlinkKafkaProducer010<T> extends FlinkKafkaProducer09<T> {
 				pendingRecords++;
 			}
 		}
-		producer.send(record, callback);
+		producer.send(record, getCallback(length(serializedKey) + length(serializedValue)));
 	}
 
 	/**

@@ -31,6 +31,8 @@ import org.apache.flink.streaming.connectors.kafka.internals.AbstractPartitionDi
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaDeserializationSchemaWrapper;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
+import org.apache.flink.streaming.util.serialization.KeyedDeserializationSchema;
 import org.apache.flink.util.PropertiesUtil;
 import org.apache.flink.util.SerializedValue;
 
@@ -215,7 +217,7 @@ public class FlinkKafkaConsumer<T> extends FlinkKafkaConsumerBase<T> {
 		SerializedValue<AssignerWithPunctuatedWatermarks<T>> watermarksPunctuated,
 		StreamingRuntimeContext runtimeContext,
 		OffsetCommitMode offsetCommitMode,
-		MetricGroup consumerMetricGroup,
+		KafkaSourceMetrics kafkaSourceMetrics,
 		boolean useMetrics) throws Exception {
 
 		// make sure that auto commit is disabled when our offset commit mode is ON_CHECKPOINTS;
@@ -235,7 +237,7 @@ public class FlinkKafkaConsumer<T> extends FlinkKafkaConsumerBase<T> {
 			properties,
 			pollTimeout,
 			runtimeContext.getMetricGroup(),
-			consumerMetricGroup,
+			kafkaSourceMetrics,
 			useMetrics);
 	}
 
