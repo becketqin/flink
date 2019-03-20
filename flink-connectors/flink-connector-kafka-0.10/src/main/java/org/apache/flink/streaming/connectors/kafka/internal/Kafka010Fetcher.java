@@ -27,6 +27,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceCont
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionState;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.SerializedValue;
 
@@ -60,7 +61,7 @@ public class Kafka010Fetcher<T> extends Kafka09Fetcher<T> {
 			Properties kafkaProperties,
 			long pollTimeout,
 			MetricGroup subtaskMetricGroup,
-			MetricGroup consumerMetricGroup,
+			KafkaSourceMetrics kafkaSourceMetrics,
 			boolean useMetrics,
 			FlinkConnectorRateLimiter rateLimiter) throws Exception {
 		super(
@@ -76,8 +77,28 @@ public class Kafka010Fetcher<T> extends Kafka09Fetcher<T> {
 				kafkaProperties,
 				pollTimeout,
 				subtaskMetricGroup,
-				consumerMetricGroup,
-				useMetrics, rateLimiter);
+				kafkaSourceMetrics,
+				useMetrics,
+				rateLimiter);
+	}
+
+	@Override
+	protected void updateMetrics(ConsumerRecord<byte[], byte[]> consumerRecord, long fetchedTime) {
+		long now = System.currentTimeMillis();
+		long size = length(consumerRecord.key()) + length(consumerRecord.value());
+		kafkaSourceMetrics.numBytesInPerSec.markEvent(size);
+		kafkaSourceMetrics.numRecordsInPerSec.markEvent();
+		kafkaSourceMetrics.recordSize.update(size);
+		kafkaSourceMetrics.updateLastRecordProcessTime(now);
+		if (consumerRecord.timestamp() != ConsumerRecord.NO_TIMESTAMP) {
+			TopicPartition tp = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+			long fetchLatency = fetchedTime - consumerRecord.timestamp();
+			long latency = now - consumerRecord.timestamp();
+			kafkaSourceMetrics.fetchLatency.update(fetchLatency);
+			kafkaSourceMetrics.latency.update(latency);
+			kafkaSourceMetrics.updateLastFetchLatency(tp, fetchLatency);
+			kafkaSourceMetrics.updateLastLatency(tp, latency);
+		}
 	}
 
 	@Override

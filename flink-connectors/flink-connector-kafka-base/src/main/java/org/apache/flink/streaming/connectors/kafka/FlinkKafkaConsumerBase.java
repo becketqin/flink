@@ -29,7 +29,6 @@ import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Counter;
-import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.runtime.state.DefaultOperatorStateBackend;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
@@ -49,6 +48,7 @@ import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionAssigner;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionStateSentinel;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicsDescriptor;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.SerializedValue;
 
@@ -67,9 +67,8 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
-import static org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaConsumerMetricConstants.COMMITS_FAILED_METRICS_COUNTER;
-import static org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaConsumerMetricConstants.COMMITS_SUCCEEDED_METRICS_COUNTER;
-import static org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaConsumerMetricConstants.KAFKA_CONSUMER_METRICS_GROUP;
+import static org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics.COMMITS_FAILED_METRICS_COUNTER;
+import static org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics.COMMITS_SUCCEEDED_METRICS_COUNTER;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -210,13 +209,10 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 	 * If {@code true}, offset metrics (e.g. current offset, committed offset) and
 	 * Kafka-shipped metrics will be registered.
 	 */
-	private final boolean useMetrics;
+	private final boolean reportOriginalMetrics;
 
-	/** Counter for successful Kafka offset commits. */
-	private transient Counter successfulCommits;
-
-	/** Counter for failed Kafka offset commits. */
-	private transient Counter failedCommits;
+	/** The consumer level metrics for Kafka . */
+	private KafkaSourceMetrics kafkaSourceMetrics;
 
 	/** Callback interface that will be invoked upon async Kafka commit completion.
 	 *  Please be aware that default callback implementation in base class does not
@@ -242,7 +238,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 			Pattern topicPattern,
 			KafkaDeserializationSchema<T> deserializer,
 			long discoveryIntervalMillis,
-			boolean useMetrics) {
+			boolean reportOriginalMetrics) {
 		this.topicsDescriptor = new KafkaTopicsDescriptor(topics, topicPattern);
 		this.deserializer = checkNotNull(deserializer, "valueDeserializer");
 
@@ -251,7 +247,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 			"Cannot define a negative value for the topic / partition discovery interval.");
 		this.discoveryIntervalMillis = discoveryIntervalMillis;
 
-		this.useMetrics = useMetrics;
+		this.reportOriginalMetrics = reportOriginalMetrics;
 	}
 
 	/**
@@ -490,6 +486,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 
 	@Override
 	public void open(Configuration configuration) throws Exception {
+		this.kafkaSourceMetrics = new KafkaSourceMetrics(getRuntimeContext().getMetricGroup());
 		// determine the offset commit mode
 		this.offsetCommitMode = OffsetCommitModes.fromConfiguration(
 				getIsAutoCommitEnabled(),
@@ -659,20 +656,22 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 			throw new Exception("The partitions were not set for the consumer");
 		}
 
-		// initialize commit metrics and default offset callback method
-		this.successfulCommits = this.getRuntimeContext().getMetricGroup().counter(COMMITS_SUCCEEDED_METRICS_COUNTER);
-		this.failedCommits =  this.getRuntimeContext().getMetricGroup().counter(COMMITS_FAILED_METRICS_COUNTER);
+		// TODO: remove the following two metrics because they have incorrect groups.
+		Counter successfulCommits = this.getRuntimeContext().getMetricGroup().counter(COMMITS_SUCCEEDED_METRICS_COUNTER);
+		Counter failedCommits =  this.getRuntimeContext().getMetricGroup().counter(COMMITS_FAILED_METRICS_COUNTER);
 
 		this.offsetCommitCallback = new KafkaCommitCallback() {
 			@Override
 			public void onSuccess() {
 				successfulCommits.inc();
+				kafkaSourceMetrics.successfulCommits.inc();
 			}
 
 			@Override
 			public void onException(Throwable cause) {
 				LOG.warn("Async Kafka commit failed.", cause);
 				failedCommits.inc();
+				kafkaSourceMetrics.failedCommits.inc();
 			}
 		};
 
@@ -695,8 +694,8 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 				punctuatedWatermarkAssigner,
 				(StreamingRuntimeContext) getRuntimeContext(),
 				offsetCommitMode,
-				getRuntimeContext().getMetricGroup().addGroup(KAFKA_CONSUMER_METRICS_GROUP),
-				useMetrics);
+				kafkaSourceMetrics,
+				reportOriginalMetrics);
 
 		if (!running) {
 			return;
@@ -1002,7 +1001,7 @@ public abstract class FlinkKafkaConsumerBase<T> extends RichParallelSourceFuncti
 			SerializedValue<AssignerWithPunctuatedWatermarks<T>> watermarksPunctuated,
 			StreamingRuntimeContext runtimeContext,
 			OffsetCommitMode offsetCommitMode,
-			MetricGroup kafkaMetricGroup,
+			KafkaSourceMetrics kafkaSourceMetrics,
 			boolean useMetrics) throws Exception;
 
 	/**

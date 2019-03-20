@@ -375,7 +375,7 @@ public class HandoverTest {
 		@Override
 		public void go() throws Exception {
 			for (ConsumerRecords<byte[], byte[]> rec : data) {
-				ConsumerRecords<byte[], byte[]> next = handover.pollNext();
+				ConsumerRecords<byte[], byte[]> next = handover.pollNext().records;
 
 				assertEquals(rec, next);
 

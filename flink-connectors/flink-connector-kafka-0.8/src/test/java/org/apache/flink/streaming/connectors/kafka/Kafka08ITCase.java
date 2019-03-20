@@ -252,6 +252,6 @@ public class Kafka08ITCase extends KafkaConsumerTestBase {
 
 	@Test(timeout = 60000)
 	public void testMetrics() throws Throwable {
-		runMetricsTest();
+		runMetricsTest(false);
 	}
 }

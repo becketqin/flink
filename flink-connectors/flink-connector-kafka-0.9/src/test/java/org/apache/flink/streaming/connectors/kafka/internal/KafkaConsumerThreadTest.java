@@ -30,6 +30,7 @@ import org.apache.flink.streaming.connectors.kafka.internals.KafkaCommitCallback
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionState;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionStateSentinel;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -777,7 +778,7 @@ public class KafkaConsumerThreadTest {
 				"test",
 				30L,
 				false,
-				metricGroup,
+				new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
 				metricGroup,
 				mockConsumer,
 				rateLimiter
@@ -826,7 +827,7 @@ public class KafkaConsumerThreadTest {
 					"test-kafka-consumer-thread",
 					0,
 					false,
-					new UnregisteredMetricsGroup(),
+					new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
 					new UnregisteredMetricsGroup(),
 					null);
 
@@ -993,13 +994,13 @@ public class KafkaConsumerThreadTest {
 				Handover handover, Properties kafkaProperties,
 				ClosableBlockingQueue<KafkaTopicPartitionState<TopicPartition>> unassignedPartitionsQueue,
 				KafkaConsumerCallBridge09 consumerCallBridge, String threadName, long pollTimeout,
-				boolean useMetrics, MetricGroup consumerMetricGroup,
+				boolean useMetrics, KafkaSourceMetrics kafkaSourceMetrics,
 				MetricGroup subtaskMetricGroup,
 				KafkaConsumer mockConsumer,
 				FlinkConnectorRateLimiter rateLimiter) {
 			super(log, handover, kafkaProperties, unassignedPartitionsQueue, consumerCallBridge,
 					threadName,
-					pollTimeout, useMetrics, consumerMetricGroup, subtaskMetricGroup,
+					pollTimeout, useMetrics, kafkaSourceMetrics, subtaskMetricGroup,
 				rateLimiter);
 			this.mockConsumer = mockConsumer;
 		}

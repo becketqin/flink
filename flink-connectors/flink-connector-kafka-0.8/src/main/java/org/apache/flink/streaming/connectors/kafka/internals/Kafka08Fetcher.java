@@ -20,13 +20,14 @@ package org.apache.flink.streaming.connectors.kafka.internals;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.functions.RuntimeContext;
-import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.streaming.api.functions.AssignerWithPeriodicWatermarks;
 import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.connectors.kafka.KafkaDeserializationSchema;
 import org.apache.flink.streaming.connectors.kafka.config.StartupMode;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
+import org.apache.flink.streaming.util.serialization.KeyedDeserializationSchema;
 import org.apache.flink.util.InstantiationUtil;
 import org.apache.flink.util.SerializedValue;
 
@@ -97,8 +98,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 			KafkaDeserializationSchema<T> deserializer,
 			Properties kafkaProperties,
 			long autoCommitInterval,
-			MetricGroup consumerMetricGroup,
-			boolean useMetrics) throws Exception {
+			KafkaSourceMetrics kafkaSourceMetrics) throws Exception {
 		super(
 				sourceContext,
 				seedPartitionsWithInitialOffsets,
@@ -107,8 +107,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 				runtimeContext.getProcessingTimeService(),
 				runtimeContext.getExecutionConfig().getAutoWatermarkInterval(),
 				runtimeContext.getUserCodeClassLoader(),
-				consumerMetricGroup,
-				useMetrics);
+				kafkaSourceMetrics);
 
 		this.deserializer = checkNotNull(deserializer);
 		this.kafkaConfig = checkNotNull(kafkaProperties);
@@ -393,7 +392,7 @@ public class Kafka08Fetcher<T> extends AbstractFetcher<T, TopicAndPartition> {
 		// seed thread with list of fetch partitions (otherwise it would shut down immediately again
 		SimpleConsumerThread<T> brokerThread = new SimpleConsumerThread<>(
 				this, errorHandler, kafkaConfig, leader, seedPartitions, unassignedPartitionsQueue,
-				clonedDeserializer, invalidOffsetBehavior);
+				clonedDeserializer, invalidOffsetBehavior, kafkaSourceMetrics);
 
 		brokerThread.setName(String.format("SimpleConsumer - %s - broker-%s (%s:%d)",
 				runtimeContext.getTaskName(), leader.id(), leader.host(), leader.port()));

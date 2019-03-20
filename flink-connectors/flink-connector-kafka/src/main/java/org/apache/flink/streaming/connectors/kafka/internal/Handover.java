@@ -51,7 +51,7 @@ public final class Handover implements Closeable {
 
 	private final Object lock = new Object();
 
-	private ConsumerRecords<byte[], byte[]> next;
+	private RecordsAndFetchTime next;
 	private Throwable error;
 	private boolean wakeupProducer;
 
@@ -68,13 +68,13 @@ public final class Handover implements Closeable {
 	 * @throws Exception Rethrows exceptions from the {@link #reportError(Throwable)} method.
 	 */
 	@Nonnull
-	public ConsumerRecords<byte[], byte[]> pollNext() throws Exception {
+	public RecordsAndFetchTime pollNext() throws Exception {
 		synchronized (lock) {
 			while (next == null && error == null) {
 				lock.wait();
 			}
 
-			ConsumerRecords<byte[], byte[]> n = next;
+			RecordsAndFetchTime n = next;
 			if (n != null) {
 				next = null;
 				lock.notifyAll();
@@ -85,7 +85,7 @@ public final class Handover implements Closeable {
 
 				// this statement cannot be reached since the above method always throws an exception
 				// this is only here to silence the compiler and any warnings
-				return ConsumerRecords.empty();
+				throw new IllegalStateException("Should never reach here.");
 			}
 		}
 	}
@@ -111,6 +111,7 @@ public final class Handover implements Closeable {
 			throws InterruptedException, WakeupException, ClosedException {
 
 		checkNotNull(element);
+		final long fetchedTime = System.currentTimeMillis();
 
 		synchronized (lock) {
 			while (next != null && !wakeupProducer) {
@@ -125,7 +126,7 @@ public final class Handover implements Closeable {
 			}
 			// if there is no error, then this is open and can accept this element
 			else if (error == null) {
-				next = element;
+				next = new RecordsAndFetchTime(element, fetchedTime);
 				lock.notifyAll();
 			}
 			// an error marks this as closed for the producer
@@ -214,5 +215,18 @@ public final class Handover implements Closeable {
 	 */
 	public static final class WakeupException extends Exception {
 		private static final long serialVersionUID = 1L;
+	}
+
+	/**
+	 * A container class to hold the records and fetch time.
+	 */
+	public static final class RecordsAndFetchTime {
+		public final ConsumerRecords<byte[], byte[]> records;
+		public final long fetchedTime;
+
+		private RecordsAndFetchTime(ConsumerRecords<byte[], byte[]> recrods, long fetchedTime) {
+			this.records = recrods;
+			this.fetchedTime = fetchedTime;
+		}
 	}
 }

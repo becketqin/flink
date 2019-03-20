@@ -69,6 +69,23 @@ under the License.
 			<scope>provided</scope>
 		</dependency>
 
+		<!-- dependency for metrics. -->
+		<dependency>
+			<groupId>org.apache.flink</groupId>
+			<artifactId>flink-connector-kafka-base_${scala.binary.version}</artifactId>
+			<version>${project.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.kafka</groupId>
+					<artifactId>kafka_${scala.binary.version}</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.kafka</groupId>
+					<artifactId>kafka-clients</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
 		<!-- Add Kafka 0.11.x as a dependency -->
 
 		<dependency>
@@ -111,21 +128,6 @@ under the License.
 			<version>${project.version}</version>
 			<scope>test</scope>
 			<type>test-jar</type>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.flink</groupId>
-			<artifactId>flink-connector-kafka-0.9_${scala.binary.version}</artifactId>
-			<version>${project.version}</version>
-			<exclusions>
-				<!-- exclude Kafka dependencies -->
-				<exclusion>
-					<groupId>org.apache.kafka</groupId>
-					<artifactId>kafka_${scala.binary.version}</artifactId>
-				</exclusion>
-			</exclusions>
-			<type>test-jar</type>
-			<scope>test</scope>
 		</dependency>
 
 		<dependency>
