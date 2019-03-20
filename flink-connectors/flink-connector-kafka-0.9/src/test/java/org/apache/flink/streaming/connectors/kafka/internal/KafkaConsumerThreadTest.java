@@ -778,7 +778,7 @@ public class KafkaConsumerThreadTest {
 				"test",
 				30L,
 				false,
-				metricGroup,
+				new KafkaSourceMetrics(new UnregisteredMetricsGroup()),
 				metricGroup,
 				mockConsumer,
 				rateLimiter
@@ -994,13 +994,13 @@ public class KafkaConsumerThreadTest {
 				Handover handover, Properties kafkaProperties,
 				ClosableBlockingQueue<KafkaTopicPartitionState<TopicPartition>> unassignedPartitionsQueue,
 				KafkaConsumerCallBridge09 consumerCallBridge, String threadName, long pollTimeout,
-				boolean useMetrics, MetricGroup consumerMetricGroup,
+				boolean useMetrics, KafkaSourceMetrics kafkaSourceMetrics,
 				MetricGroup subtaskMetricGroup,
 				KafkaConsumer mockConsumer,
 				FlinkConnectorRateLimiter rateLimiter) {
 			super(log, handover, kafkaProperties, unassignedPartitionsQueue, consumerCallBridge,
 					threadName,
-					pollTimeout, useMetrics, consumerMetricGroup, subtaskMetricGroup,
+					pollTimeout, useMetrics, kafkaSourceMetrics, subtaskMetricGroup,
 				rateLimiter);
 			this.mockConsumer = mockConsumer;
 		}

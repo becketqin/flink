@@ -27,8 +27,8 @@ import org.apache.flink.streaming.connectors.kafka.internals.KafkaCommitCallback
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionState;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartitionStateSentinel;
 import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaMetricWrapper;
-
 import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSourceMetrics;
+
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -402,6 +402,7 @@ public class KafkaConsumerThread extends Thread {
 
 			// reassign with the new partitions
 			consumerTmp.assign(newPartitionAssignments);
+			kafkaSourceMetrics.updatePartitions(newPartitionAssignments);
 			reassignmentStarted = true;
 
 			// old partitions should be seeked to their previous position

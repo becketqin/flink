@@ -136,6 +136,11 @@ public class KafkaITCase extends KafkaConsumerTestBase {
 		runEndOfStreamTest();
 	}
 
+	@Test
+	public void testMetrics() throws Throwable {
+		runMetricsTest(true);
+	}
+
 	// --- startup mode ---
 
 	@Test(timeout = 60000)

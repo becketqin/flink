@@ -24,12 +24,15 @@ import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import com.codahale.metrics.ExponentiallyDecayingReservoir;
 import org.junit.Test;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.junit.Assert.assertEquals;
 
 /**
  * Unit test for abstract metrics.
  */
-public class AbstractMetricTest {
+public class AbstractMetricsTest {
 
 	@Test
 	public void testGauge() {
@@ -94,7 +97,8 @@ public class AbstractMetricTest {
 		final Gauge gauge = () -> 100;
 		final Meter meter = new MeterView(60);
 		final Counter counter = new SimpleCounter();
-		final Histogram histogram = new DropwizardHistogramWrapper(new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir()));
+		final Histogram histogram =
+			new DropwizardHistogramWrapper(new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir()));
 
 		MetricDef metricDef = new MetricDef()
 			.define("gauge", "doc", MetricSpec.of(gauge))
@@ -113,8 +117,81 @@ public class AbstractMetricTest {
 		assertEquals(1, testMetrics.getHistogram("histogram").getCount());
 	}
 
+	@Test
+	public void testDefaultDisabledMetrics() {
+		MetricDef metricDef = new MetricDef()
+			.define("gauge", "doc", MetricSpec.gauge(), false)
+			.define("meter", "doc", MetricSpec.meter(), false)
+			.define("counter", "doc", MetricSpec.counter(), false)
+			.define("histogram", "doc", MetricSpec.histogram(), false);
+
+		TestMetrics testMetrics = new TestMetrics(new UnregisteredMetricsGroup(), metricDef);
+		testMetrics.setGauge("gauge", () -> 100);
+
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getGauge("gauge"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getCounter("counter"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getMeter("meter"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getHistogram("histogram"));
+	}
+
+	@Test
+	public void testDefaultDisabledMetricsWithInstanceSpec() {
+		final Gauge gauge = () -> 100;
+		final Meter meter = new MeterView(60);
+		final Counter counter = new SimpleCounter();
+		final Histogram histogram =
+			new DropwizardHistogramWrapper(new com.codahale.metrics.Histogram(new ExponentiallyDecayingReservoir()));
+
+		MetricDef metricDef = new MetricDef()
+			.define("gauge", "doc", MetricSpec.of(gauge), false)
+			.define("meter", "doc", MetricSpec.of(meter), false)
+			.define("counter", "doc", MetricSpec.of(counter), false)
+			.define("histogram", "doc", MetricSpec.of(histogram), false);
+
+		TestMetrics testMetrics = new TestMetrics(new UnregisteredMetricsGroup(), metricDef);
+
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getGauge("gauge"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getCounter("counter"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getMeter("meter"));
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getHistogram("histogram"));
+	}
+
+	@Test
+	public void testMetricSwitchConfig() {
+		MetricDef metricDef = new MetricDef()
+			.define("counter1", "doc", MetricSpec.counter(), false)
+			.define("counter2", "doc", MetricSpec.counter());
+
+		Map<String, Boolean> metricSwich = new HashMap<>();
+		metricSwich.put("counter1", true);
+		metricSwich.put("counter2", false);
+		TestMetrics testMetrics = new TestMetrics(new UnregisteredMetricsGroup(), metricDef, metricSwich);
+
+		assertEquals(BlackHoleMetric.instance(), testMetrics.getCounter("counter2"));
+		assertEquals(0, testMetrics.getCounter("counter1").getCount());
+	}
+
 	@Test(expected = IllegalStateException.class)
-	public void testMissingSubMetricDefinition() {
+	public void testDependencyMetricDisabled() {
+		MetricDef metricDef = new MetricDef()
+			.define("counter", "doc", MetricSpec.counter(), false)
+			.define("meter", "doc", MetricSpec.meter("counter"));
+
+		new TestMetrics(new UnregisteredMetricsGroup(), metricDef);
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testDisabledUnsetGauge() {
+		// Get unset gauge should always throw exception even if the gauge is not enabled.
+		MetricDef metricDef = new MetricDef()
+			.define("gauge", "A standalone gauge", MetricSpec.gauge(), false);
+
+		TestMetrics testMetrics = new TestMetrics(new UnregisteredMetricsGroup(), metricDef);
+		testMetrics.getGauge("gauge");
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testMissingDependencyMetricDefinition() {
 		MetricDef metricDef = new MetricDef()
 			.define("meter", "doc", MetricSpec.meter("non-existing-counter"));
 		new TestMetrics(new UnregisteredMetricsGroup(), metricDef);
@@ -135,6 +212,10 @@ public class AbstractMetricTest {
 
 		TestMetrics(MetricGroup metricGroup, MetricDef metricDef) {
 			super(metricGroup, metricDef);
+		}
+
+		TestMetrics(MetricGroup metricGroup, MetricDef metricDef, Map<String, Boolean> metricSwitch) {
+			super(metricGroup, metricDef, metricSwitch);
 		}
 
 	}

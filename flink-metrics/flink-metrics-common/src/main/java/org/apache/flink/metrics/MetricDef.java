@@ -45,6 +45,20 @@ public class MetricDef {
 	 * @return this MetricDef for chained invocation.
 	 */
 	public MetricDef define(String name, String doc, MetricSpec spec) {
+		return define(name, doc, spec, true);
+	}
+
+	/**
+	 * Define a metric using {@link MetricSpec}.
+	 *
+	 * @param name the name of the metric.
+	 * @param doc the description of the metric.
+	 * @param spec the {@link MetricSpec} of the metric.
+	 * @param enabledByDefault whether the metric should be enabled by default.
+	 *
+	 * @return this MetricDef for chained invocation.
+	 */
+	public MetricDef define(String name, String doc, MetricSpec spec, boolean enabledByDefault) {
 		try {
 			spec.validateMetricDef(this);
 		} catch (Exception e) {
@@ -60,7 +74,7 @@ public class MetricDef {
 			if (m != null) {
 				throw new IllegalStateException("Metric " + name + " is already defined for metric " + m);
 			}
-			return new MetricInfo(name, doc, spec);
+			return new MetricInfo(name, doc, spec, enabledByDefault);
 		});
 
 		return this;
@@ -114,6 +128,19 @@ public class MetricDef {
 		return Collections.unmodifiableMap(definitions);
 	}
 
+	/**
+	 * Get the MetricInfo a defined metric with the given metric name.
+	 *
+	 * @param metricName the given metric name.
+	 * @return the MetricInfo of the given metric name.
+	 */
+	MetricInfo definition(String metricName) {
+		return definitions.get(metricName);
+	}
+
+	/**
+	 * @return All the metric dependencies.
+	 */
 	Map<String, Set<String>> dependencies() {
 		return Collections.unmodifiableMap(dependencies);
 	}
@@ -127,11 +154,13 @@ public class MetricDef {
 		final String name;
 		final String doc;
 		final MetricSpec spec;
+		final boolean enabledByDefault;
 
-		private MetricInfo(String name, String doc, MetricSpec spec) {
+		private MetricInfo(String name, String doc, MetricSpec spec, boolean enabledByDefault) {
 			this.name = name;
 			this.doc = doc;
 			this.spec = spec;
+			this.enabledByDefault = enabledByDefault;
 		}
 
 		@Override

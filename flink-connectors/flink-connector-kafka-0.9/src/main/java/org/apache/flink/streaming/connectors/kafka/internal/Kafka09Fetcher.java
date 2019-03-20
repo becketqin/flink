@@ -142,7 +142,6 @@ public class Kafka09Fetcher<T> extends AbstractFetcher<T, TopicPartition> {
 
 					List<ConsumerRecord<byte[], byte[]>> partitionRecords =
 							records.records(partition.getKafkaPartitionHandle());
-
 					for (ConsumerRecord<byte[], byte[]> record : partitionRecords) {
 
 						final T value = deserializer.deserialize(record);

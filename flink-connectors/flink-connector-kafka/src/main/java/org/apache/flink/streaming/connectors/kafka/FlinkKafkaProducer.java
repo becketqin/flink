@@ -42,6 +42,8 @@ import org.apache.flink.streaming.connectors.kafka.internal.FlinkKafkaInternalPr
 import org.apache.flink.streaming.connectors.kafka.internal.TransactionalIdsGenerator;
 import org.apache.flink.streaming.connectors.kafka.internal.metrics.KafkaMetricMutableWrapper;
 import org.apache.flink.streaming.connectors.kafka.internals.KeyedSerializationSchemaWrapper;
+import org.apache.flink.streaming.connectors.kafka.internals.MetricRecordingCallback;
+import org.apache.flink.streaming.connectors.kafka.internals.metrics.KafkaSinkMetrics;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkFixedPartitioner;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaDelegatePartitioner;
 import org.apache.flink.streaming.connectors.kafka.partitioner.FlinkKafkaPartitioner;
@@ -261,6 +263,9 @@ public class FlinkKafkaProducer<IN>
 
 	/** Cache of metrics to replace already registered metrics instead of overwriting existing ones. */
 	private final Map<String, KafkaMetricMutableWrapper> previouslyCreatedMetrics = new HashMap<>();
+
+	/** The metrics for kafka sinks. */
+	protected KafkaSinkMetrics kafkaSinkMetrics;
 
 	/**
 	 * Creates a FlinkKafkaProducer for a given topic. The sink produces a DataStream to
@@ -588,30 +593,7 @@ public class FlinkKafkaProducer<IN>
 	 */
 	@Override
 	public void open(Configuration configuration) throws Exception {
-		if (logFailuresOnly) {
-			callback = new Callback() {
-				@Override
-				public void onCompletion(RecordMetadata metadata, Exception e) {
-					if (e != null) {
-						LOG.error("Error while sending record to Kafka: " + e.getMessage(), e);
-					}
-					acknowledgeMessage();
-				}
-			};
-		}
-		else {
-			callback = new Callback() {
-				@Override
-				public void onCompletion(RecordMetadata metadata, Exception exception) {
-					if (exception != null && asyncException == null) {
-						asyncException = exception;
-					}
-					acknowledgeMessage();
-				}
-			};
-		}
-
-		super.open(configuration);
+		kafkaSinkMetrics = new KafkaSinkMetrics(getRuntimeContext().getMetricGroup());
 	}
 
 	@Override
@@ -647,7 +629,9 @@ public class FlinkKafkaProducer<IN>
 			record = new ProducerRecord<>(targetTopic, null, timestamp, serializedKey, serializedValue);
 		}
 		pendingRecords.incrementAndGet();
-		transaction.producer.send(record, callback);
+		transaction.producer.send(
+			record,
+			new ErrorHandlingCallback(kafkaSinkMetrics, length(serializedKey) + length(serializedValue)));
 	}
 
 	@Override
@@ -768,6 +752,10 @@ public class FlinkKafkaProducer<IN>
 
 	private void acknowledgeMessage() {
 		pendingRecords.decrementAndGet();
+	}
+
+	private int length(byte[] bytes) {
+		return bytes == null ? 0 : bytes.length;
 	}
 
 	/**
@@ -1362,6 +1350,31 @@ public class FlinkKafkaProducer<IN>
 		public NextTransactionalIdHint(int parallelism, long nextFreeTransactionalId) {
 			this.lastParallelism = parallelism;
 			this.nextFreeTransactionalId = nextFreeTransactionalId;
+		}
+	}
+
+	/**
+	 * A callback class that records the update the metrics and handles exceptions.
+	 *
+	 * <p>This class is a copy of {@link FlinkKafkaProducerBase.ErrorHandlingCallback}.
+	 */
+	private class ErrorHandlingCallback extends MetricRecordingCallback {
+
+		ErrorHandlingCallback(KafkaSinkMetrics kafkaSinkMetrics, int size) {
+			super(kafkaSinkMetrics, size);
+		}
+
+		@Override
+		public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+			super.onCompletion(recordMetadata, e);
+			if (e != null) {
+				if (logFailuresOnly) {
+					LOG.error("Error while sending record to Kafka: " + e.getMessage(), e);
+				} else {
+					asyncException = e;
+				}
+			}
+			acknowledgeMessage();
 		}
 	}
 }

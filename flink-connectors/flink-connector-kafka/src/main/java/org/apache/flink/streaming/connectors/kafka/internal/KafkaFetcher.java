@@ -128,7 +128,8 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 			while (running) {
 				// this blocks until we get the next records
 				// it automatically re-throws exceptions encountered in the consumer thread
-				final ConsumerRecords<byte[], byte[]> records = handover.pollNext();
+				Handover.RecordsAndFetchTime recordsAndFetchTime = handover.pollNext();
+				final ConsumerRecords<byte[], byte[]> records = recordsAndFetchTime.records;
 
 				// get the records for each topic partition
 				for (KafkaTopicPartitionState<TopicPartition> partition : subscribedPartitionStates()) {
@@ -144,7 +145,7 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 							running = false;
 							break;
 						}
-
+						updateMetrics(record, recordsAndFetchTime.fetchedTime);
 						// emit the actual record. this also updates offset state atomically
 						// and deals with timestamps and watermark generation
 						emitRecord(value, partition, record.offset(), record);
@@ -199,6 +200,25 @@ public class KafkaFetcher<T> extends AbstractFetcher<T, TopicPartition> {
 	@Override
 	public TopicPartition createKafkaPartitionHandle(KafkaTopicPartition partition) {
 		return new TopicPartition(partition.getTopic(), partition.getPartition());
+	}
+
+	@Override
+	protected void updateMetrics(ConsumerRecord<byte[], byte[]> consumerRecord, long fetchedTime) {
+		long now = System.currentTimeMillis();
+		long size = length(consumerRecord.key()) + length(consumerRecord.value());
+		kafkaSourceMetrics.numBytesInPerSec.markEvent(size);
+		kafkaSourceMetrics.numRecordsInPerSec.markEvent();
+		kafkaSourceMetrics.recordSize.update(size);
+		kafkaSourceMetrics.updateLastRecordProcessTime(now);
+		if (consumerRecord.timestamp() != ConsumerRecord.NO_TIMESTAMP) {
+			TopicPartition tp = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+			long fetchLatency = fetchedTime - consumerRecord.timestamp();
+			long latency = now - consumerRecord.timestamp();
+			kafkaSourceMetrics.fetchLatency.update(fetchLatency);
+			kafkaSourceMetrics.latency.update(latency);
+			kafkaSourceMetrics.updateLastFetchLatency(tp, fetchLatency);
+			kafkaSourceMetrics.updateLastLatency(tp, latency);
+		}
 	}
 
 	@Override

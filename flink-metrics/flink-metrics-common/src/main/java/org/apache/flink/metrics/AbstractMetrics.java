@@ -24,19 +24,30 @@ import com.codahale.metrics.ExponentiallyDecayingReservoir;
 import com.codahale.metrics.Histogram;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * An abstract metrics class that helps creating metrics for components.
+ *
+ * <p>The AbstractMetrics does the followings:
+ * <ul>
+ *   <li>Create the metrics according to the metric definitions in the {@link MetricDef}.</li>
+ *   <li>Handles the user configs to enabled / disable particular metrics. When a metric is disabled,
+ *   a {@link BlackHoleMetric} is used instead of real metric.</li>
+ * </ul>
  */
 public abstract class AbstractMetrics {
-	private static final Metric GAUGE_PLACEHOLDER = (Gauge<Integer>) () -> -1;
+	private static final Gauge<?> GAUGE_PLACEHOLDER = (Gauge<Integer>) () -> -1;
 	private final MetricGroup metricGroup;
 	private final ConcurrentMap<String, Metric> metrics = new ConcurrentHashMap<>();
+	private final MetricDef metricDef;
+	private final Map<String, Boolean> metricSwitch;
 
-	// --------------- constructor ------------------------
+	// --------------- constructors ------------------------
 
 	/**
 	 * Construct the metrics based on the given {@link MetricDef}.
@@ -45,7 +56,20 @@ public abstract class AbstractMetrics {
 	 * @param metricDef the metric definition.
 	 */
 	public AbstractMetrics(MetricGroup metricGroup, MetricDef metricDef) {
+		this(metricGroup, metricDef, Collections.emptyMap());
+	}
+
+	/**
+	 * Construct the metrics based on the given {@link MetricDef}.
+	 *
+	 * @param metricGroup the metric group to register the metrics.
+	 * @param metricDef the metric definition.
+	 * @param metricSwitch a map indicating whether a metric is explicitly enabled or disabled.
+	 */
+	public AbstractMetrics(MetricGroup metricGroup, MetricDef metricDef, Map<String, Boolean> metricSwitch) {
 		this.metricGroup = metricGroup;
+		this.metricDef = metricDef;
+		this.metricSwitch = new HashMap<>(metricSwitch == null ? Collections.emptyMap() : metricSwitch);
 		metricDef.definitions().values().forEach(
 			definition -> createMetric(metricGroup, metricDef, definition.name, definition.spec));
 	}
@@ -57,14 +81,10 @@ public abstract class AbstractMetrics {
 	 *
 	 * @param metricName the metric name of the gauge.
 	 * @return the gauge if exists.
-	 * @throws IllegalArgumentException if the metric does not exist.
+	 * @throws IllegalArgumentException if the metric has not been set.
 	 */
 	public Gauge<?> getGauge(String metricName) {
-		Gauge<?> gauge = get(metricName);
-		if (gauge == GAUGE_PLACEHOLDER) {
-			throw new IllegalStateException(metricName + " does not exist.");
-		}
-		return gauge;
+		return get(metricName);
 	}
 
 	/**
@@ -107,8 +127,10 @@ public abstract class AbstractMetrics {
 	 * @param gauge the actual gauge instance.
 	 */
 	public void setGauge(String metricName, Gauge<?> gauge) {
-		metricGroup.gauge(metricName, gauge);
-		addMetric(metricName, metricGroup.gauge(metricName, gauge));
+		// Set the gauge to black hole if the metric is disabled.
+		addMetric(
+				metricName,
+				isMetricEnabled(metricName) ? metricGroup.gauge(metricName, gauge) : BlackHoleMetric.instance());
 	}
 
 	/**
@@ -119,7 +141,11 @@ public abstract class AbstractMetrics {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> T get(String metricName) {
-		return (T) notNull(metrics.get(metricName), metricName + "does not exist.");
+		T metric = (T) metrics.get(metricName);
+		if (metric == GAUGE_PLACEHOLDER) {
+			throw new IllegalStateException("Gauge" + metricName + " has not been set.");
+		}
+		return notNull(metric, "Metric " + metricName + " does not exist.");
 	}
 
 	/**
@@ -142,43 +168,45 @@ public abstract class AbstractMetrics {
 
 	// ------------------ private helper methods ---------------------
 
-	private Metric createMetric(MetricGroup metricGroup,
-								MetricDef metricDef,
-								String metricName,
-								MetricSpec spec) {
-		// If a metric has been created, just use it.
-		Metric metric = metrics.get(metricName);
-		if (metric != null) {
-			return metric;
+	private void createMetric(MetricGroup metricGroup, MetricDef metricDef, String metricName, MetricSpec spec) {
+		if (metrics.get(metricName) != null) {
+			return;
 		}
 
 		// Create dependency metrics recursively.
-		for (String dependencyMetric : spec.dependencies) {
-			if (!metrics.containsKey(dependencyMetric)) {
-				MetricDef.MetricInfo metricInfo = metricDef.definitions().get(dependencyMetric);
-				if (metricInfo == null) {
-					throw new IllegalStateException("Could not find metric definition for " + dependencyMetric
-														+ " which is referred by " + metricName + " as a"
-														+ " dependency metric.");
+		for (String dependencyMetricName : spec.dependencies) {
+			if (!metrics.containsKey(dependencyMetricName)) {
+				MetricDef.MetricInfo dependencyMetricInfo = metricDef.definition(dependencyMetricName);
+				if (!isMetricEnabled(
+						dependencyMetricName,
+						"Could not find metric definition for dependency metric " + dependencyMetricName
+						+ " of metric " + metricName + ".")) {
+					throw new IllegalStateException("Metric " + metricName + " could not be created because "
+														+ "dependency metric " + dependencyMetricName + " is disabled.");
 				}
-				createMetric(metricGroup, metricDef, dependencyMetric, metricInfo.spec);
+				createMetric(metricGroup, metricDef, dependencyMetricName, dependencyMetricInfo.spec);
 			}
 		}
 
 		// Create metric.
 		switch (spec.type) {
 			case COUNTER:
-				if (spec instanceof MetricSpec.InstanceSpec) {
-					return addMetric(
+				if (!isMetricEnabled(metricName)) {
+					metrics.put(metricName, BlackHoleMetric.instance());
+				} else if (spec instanceof MetricSpec.InstanceSpec) {
+					addMetric(
 						metricName,
 						metricGroup.counter(metricName,	(Counter) ((MetricSpec.InstanceSpec) spec).metric));
 				} else {
-					return addMetric(metricName, metricGroup.counter(metricName));
+					addMetric(metricName, metricGroup.counter(metricName));
 				}
+				break;
 
 			case METER:
-				if (spec instanceof MetricSpec.InstanceSpec) {
-					return addMetric(
+				if (!isMetricEnabled(metricName)) {
+					metrics.put(metricName, BlackHoleMetric.instance());
+				} else if (spec instanceof MetricSpec.InstanceSpec) {
+					addMetric(
 						metricName,
 						metricGroup.meter(metricName, (Meter) ((MetricSpec.InstanceSpec) spec).metric));
 				} else {
@@ -192,30 +220,41 @@ public abstract class AbstractMetrics {
 						// Separate counter metric has been created.
 						counter = (Counter) metrics.get(counterName);
 					}
-					return addMetric(
+					addMetric(
 						metricName,
 						metricGroup.meter(metricName, new MeterView(counter, meterSpec.timeSpanInSeconds)));
 				}
+				break;
 
 			case HISTOGRAM:
-				if (spec instanceof MetricSpec.InstanceSpec) {
-					return addMetric(
+				if (!isMetricEnabled(metricName)) {
+					metrics.put(metricName, BlackHoleMetric.instance());
+				} else if (spec instanceof MetricSpec.InstanceSpec) {
+					addMetric(
 						metricName,
 						metricGroup.histogram(metricName, (org.apache.flink.metrics.Histogram) ((MetricSpec.InstanceSpec) spec).metric));
 				} else {
-					return addMetric(metricName, metricGroup.histogram(
+					addMetric(metricName, metricGroup.histogram(
 						metricName,
 						new DropwizardHistogramWrapper(new Histogram(new ExponentiallyDecayingReservoir()))));
 				}
+				break;
 
 			case GAUGE:
-				if (spec instanceof MetricSpec.InstanceSpec) {
-					return addMetric(
+				if (!isMetricEnabled(metricName)) {
+					// If the gauge instance is specified, replace it with a black hole instance.
+					// Otherwise use Gauge placeholder to ensure user has set an instance in the code.
+					metrics.put(
+							metricName,
+							spec instanceof MetricSpec.InstanceSpec ? BlackHoleMetric.instance() : GAUGE_PLACEHOLDER);
+				} else if (spec instanceof MetricSpec.InstanceSpec) {
+					addMetric(
 						metricName,
 						(Gauge) metricGroup.gauge(metricName, (Gauge) ((MetricSpec.InstanceSpec) spec).metric));
 				} else {
-					return metrics.put(metricName, GAUGE_PLACEHOLDER);
+					metrics.put(metricName, GAUGE_PLACEHOLDER);
 				}
+				break;
 
 			default:
 				throw new IllegalArgumentException("Unknown metric type " + spec.type);
@@ -232,9 +271,21 @@ public abstract class AbstractMetrics {
 		});
 	}
 
+	private boolean isMetricEnabled(String metricName) {
+		return isMetricEnabled(metricName, "Metric " + metricName + " is not defined.");
+	}
+
+	private boolean isMetricEnabled(String metricName, String notDefinedErrorMsg) {
+		MetricDef.MetricInfo metricInfo = metricDef.definition(metricName);
+		if (metricInfo == null) {
+			throw new IllegalStateException(notDefinedErrorMsg);
+		}
+		return metricSwitch.getOrDefault(metricName, metricInfo.enabledByDefault);
+	}
+
 	private static <T> T notNull(T obj, String errorMsg) {
 		if (obj == null) {
-			throw new IllegalArgumentException(errorMsg);
+			throw new IllegalStateException(errorMsg);
 		} else {
 			return obj;
 		}

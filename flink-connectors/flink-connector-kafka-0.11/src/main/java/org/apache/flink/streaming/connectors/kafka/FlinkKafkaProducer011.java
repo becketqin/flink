@@ -30,6 +30,7 @@ import org.apache.flink.api.common.typeutils.SimpleTypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
 import org.apache.flink.api.java.ClosureCleaner;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
 import org.apache.flink.metrics.MetricGroup;
@@ -581,6 +582,11 @@ public class FlinkKafkaProducer011<IN>
 	// ----------------------------------- Utilities --------------------------
 
 	@Override
+	public void open(Configuration parameters) throws Exception {
+		kafkaSinkMetrics = new KafkaSinkMetrics(getRuntimeContext().getMetricGroup());
+	}
+
+	@Override
 	public void invoke(KafkaTransactionState transaction, IN next, Context context) throws FlinkKafka011Exception {
 		checkErroneous();
 
@@ -957,8 +963,6 @@ public class FlinkKafkaProducer011<IN>
 				}
 			}
 		}
-		kafkaSinkMetrics = new KafkaSinkMetrics(getRuntimeContext().getMetricGroup());
-
 		return producer;
 	}
 

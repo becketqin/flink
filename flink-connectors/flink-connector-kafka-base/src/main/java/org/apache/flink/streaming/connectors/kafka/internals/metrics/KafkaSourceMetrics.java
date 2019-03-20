@@ -24,6 +24,15 @@ import org.apache.flink.metrics.MetricDef;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.metrics.MetricSpec;
 
+import org.apache.kafka.common.TopicPartition;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * A class that holds all Kafka Source Metrics.
  */
@@ -51,10 +60,30 @@ public class KafkaSourceMetrics extends SourceMetrics {
 	public final Counter successfulCommits;
 	public final Counter failedCommits;
 
+	private final Map<TopicPartition, Long> lastProcessLatency = new ConcurrentHashMap<>();
+	private final Map<TopicPartition, Long> lastFetchedLatency = new ConcurrentHashMap<>();
+
 	public KafkaSourceMetrics(MetricGroup metricGroup) {
 		super(metricGroup.addGroup(KAFKA_CONSUMER_METRICS_GROUP), METRIC_DEF);
 
 		successfulCommits = get(COMMITS_SUCCEEDED_METRICS_COUNTER);
 		failedCommits = get(COMMITS_FAILED_METRICS_COUNTER);
+
+		setGauge(CURRENT_LATENCY, () -> lastProcessLatency.isEmpty() ? -1L : Collections.max(lastProcessLatency.values()));
+		setGauge(CURRENT_FETCH_LATENCY, () -> lastFetchedLatency.isEmpty() ? -1L : Collections.max(lastFetchedLatency.values()));
+	}
+
+	public void updateLastLatency(TopicPartition tp, long time) {
+		lastProcessLatency.put(tp, time);
+	}
+
+	public void updateLastFetchLatency(TopicPartition tp, long time) {
+		lastFetchedLatency.put(tp, time);
+	}
+
+	public void updatePartitions(Collection<TopicPartition> partitions) {
+		Set<TopicPartition> newAssignment = new HashSet<>(partitions);
+		lastFetchedLatency.entrySet().removeIf(entry -> !newAssignment.contains(entry.getKey()));
+		lastProcessLatency.entrySet().removeIf(entry -> !newAssignment.contains(entry.getKey()));
 	}
 }

@@ -37,6 +37,8 @@ import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.client.program.ProgramInvocationException;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connectors.metrics.SinkMetrics;
+import org.apache.flink.connectors.metrics.SourceMetrics;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputView;
@@ -107,6 +109,16 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.flink.connectors.metrics.SinkMetrics.NUM_BYTES_OUT;
+import static org.apache.flink.connectors.metrics.SinkMetrics.NUM_RECORDS_OUT;
+import static org.apache.flink.connectors.metrics.SinkMetrics.SEND_TIME;
+import static org.apache.flink.connectors.metrics.SourceMetrics.CURRENT_FETCH_LATENCY;
+import static org.apache.flink.connectors.metrics.SourceMetrics.CURRENT_LATENCY;
+import static org.apache.flink.connectors.metrics.SourceMetrics.FETCH_LATENCY;
+import static org.apache.flink.connectors.metrics.SourceMetrics.IDLE_TIME;
+import static org.apache.flink.connectors.metrics.SourceMetrics.LATENCY;
+import static org.apache.flink.connectors.metrics.SourceMetrics.NUM_BYTES_IN;
+import static org.apache.flink.connectors.metrics.SourceMetrics.NUM_RECORDS_IN;
 import static org.apache.flink.streaming.connectors.kafka.testutils.ClusterCommunicationUtils.getRunningJobs;
 import static org.apache.flink.streaming.connectors.kafka.testutils.ClusterCommunicationUtils.waitUntilJobIsRunning;
 import static org.apache.flink.streaming.connectors.kafka.testutils.ClusterCommunicationUtils.waitUntilNoJobIsRunning;
@@ -1665,23 +1677,27 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBaseWithFlink {
 			}
 
 			// check if producer metrics are also available.
-			String consumerMetricGroup = KafkaSourceMetrics.KAFKA_CONSUMER_METRICS_GROUP;
+			String consumerMetricGroupPrefix = KafkaSourceMetrics.KAFKA_CONSUMER_METRICS_GROUP + ".";
 			Set<ObjectName> producerMetrics = mBeanServer.queryNames(new ObjectName("*KafkaProducer*:*"), null);
 			Assert.assertTrue("No producer metrics found", producerMetrics.size() > 30);
-			assertNonZeroCount(mBeanServer, consumerMetricGroup + ".numBytesIn");
-			assertNonZeroCount(mBeanServer, consumerMetricGroup + ".numRecordsIn");
-			assertNonZeroCount(mBeanServer, consumerMetricGroup + ".recordSize");
+			assertNonZeroCount(mBeanServer, consumerMetricGroupPrefix + NUM_BYTES_IN);
+			assertNonZeroCount(mBeanServer, consumerMetricGroupPrefix + NUM_RECORDS_IN);
 			if (timestampAvailable) {
-				assertNonZeroCount(mBeanServer, consumerMetricGroup + ".fetchLatency");
-				assertNonZeroCount(mBeanServer, consumerMetricGroup + ".latency");
+				assertTrue(getMetric(mBeanServer, consumerMetricGroupPrefix + CURRENT_FETCH_LATENCY, "Value") >= 0);
+				assertTrue(getMetric(mBeanServer, consumerMetricGroupPrefix + CURRENT_LATENCY, "Value") >= 0);
 			}
-			assertTrue(getMetric(mBeanServer, consumerMetricGroup + ".idleTime", "Value") >= 0);
+			assertTrue(getMetric(mBeanServer, consumerMetricGroupPrefix + IDLE_TIME, "Value") >= 0);
 
-			String producerMetricGroup = KafkaSinkMetrics.KAFKA_PRODUCER_GROUP;
-			assertNonZeroCount(mBeanServer, producerMetricGroup + ".numBytesOut");
-			assertNonZeroCount(mBeanServer, producerMetricGroup + ".numRecordsOut");
-			assertNonZeroCount(mBeanServer, producerMetricGroup + ".recordSize");
-			assertNonZeroCount(mBeanServer, producerMetricGroup + ".sendTime");
+			String producerMetricGroupPrefix = KafkaSinkMetrics.KAFKA_PRODUCER_GROUP + ".";
+			assertNonZeroCount(mBeanServer, producerMetricGroupPrefix + NUM_BYTES_OUT);
+			assertNonZeroCount(mBeanServer, producerMetricGroupPrefix + NUM_RECORDS_OUT);
+
+			// The histogram metrics should not be registered by default.
+			assertNotExist(mBeanServer, consumerMetricGroupPrefix + SourceMetrics.RECORD_SIZE);
+			assertNotExist(mBeanServer, consumerMetricGroupPrefix + FETCH_LATENCY);
+			assertNotExist(mBeanServer, consumerMetricGroupPrefix + LATENCY);
+			assertNotExist(mBeanServer, producerMetricGroupPrefix + SinkMetrics.RECORD_SIZE);
+			assertNotExist(mBeanServer, producerMetricGroupPrefix + SEND_TIME);
 
 			LOG.info("Found all JMX metrics. Cancelling job.");
 		} finally {
@@ -1698,8 +1714,14 @@ public abstract class KafkaConsumerTestBase extends KafkaTestBaseWithFlink {
 		deleteTestTopic(topic);
 	}
 
+	private void assertNotExist(MBeanServer mBeanServer, String metricName) throws Exception {
+		Set<ObjectName> metrics = mBeanServer.queryNames(new ObjectName("*" + metricName + ":*"), null);
+		assertTrue("Metric name" + metricName + " should not have been registered.", metrics.isEmpty());
+	}
+
 	private void assertNonZeroCount(MBeanServer mBeanServer, String metricName) throws Exception {
 		Set<ObjectName> metrics = mBeanServer.queryNames(new ObjectName("*" + metricName + ":*"), null);
+		assertFalse("Cannot find any metric with name pattern " + metricName, metrics.isEmpty());
 		for (ObjectName name : metrics) {
 			assertTrue((long) mBeanServer.getAttribute(name, "Count") > 0);
 		}

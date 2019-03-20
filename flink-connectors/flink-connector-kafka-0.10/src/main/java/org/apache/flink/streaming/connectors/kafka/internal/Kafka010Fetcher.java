@@ -91,8 +91,13 @@ public class Kafka010Fetcher<T> extends Kafka09Fetcher<T> {
 		kafkaSourceMetrics.recordSize.update(size);
 		kafkaSourceMetrics.updateLastRecordProcessTime(now);
 		if (consumerRecord.timestamp() != ConsumerRecord.NO_TIMESTAMP) {
-			kafkaSourceMetrics.fetchLatency.update(fetchedTime - consumerRecord.timestamp());
-			kafkaSourceMetrics.latency.update(now - consumerRecord.timestamp());
+			TopicPartition tp = new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+			long fetchLatency = fetchedTime - consumerRecord.timestamp();
+			long latency = now - consumerRecord.timestamp();
+			kafkaSourceMetrics.fetchLatency.update(fetchLatency);
+			kafkaSourceMetrics.latency.update(latency);
+			kafkaSourceMetrics.updateLastFetchLatency(tp, fetchLatency);
+			kafkaSourceMetrics.updateLastLatency(tp, latency);
 		}
 	}
 

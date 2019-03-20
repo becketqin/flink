@@ -19,12 +19,16 @@
 package org.apache.flink.connectors.metrics;
 
 import org.apache.flink.metrics.AbstractMetrics;
+import org.apache.flink.metrics.BlackHoleMetric;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.Histogram;
 import org.apache.flink.metrics.Meter;
 import org.apache.flink.metrics.MetricDef;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.metrics.MetricSpec;
+
+import java.util.Collections;
+import java.util.Map;
 
 /**
  * A class hosting common connector metrics.
@@ -49,6 +53,24 @@ public abstract class SourceMetrics extends AbstractMetrics {
 	public static final String RECORD_SIZE = "recordSize";
 	private static final String RECORD_SIZE_DOC = "The size of the record.";
 
+	public static final String CURRENT_FETCH_LATENCY = "currentFetchLatency";
+	private static final String CURRENT_FETCH_LATENCY_DOC =
+			"The latency occurred before Flink fetched the record.\n" +
+			"This metric is different from fetchLatency in that it is an instantaneous value recorded for the " +
+			"last processed record.\n" +
+			"This metric is provided because latency histogram could be expensive. The instantaneous latency " +
+			"value is usually a good enough indication of the latency.\n" +
+			"fetchLatency = FetchTime - EventTime";
+
+	public static final String CURRENT_LATENCY = "currentLatency";
+	private static final String CURRENT_LATENCY_DOC =
+			"The latency occurred before the record is emitted by the source connector.\n" +
+			"This metric is different from latency in that it is an instantaneous value recorded for the last " +
+			"processed record.\n" +
+			"This metric is provided because latency histogram could be expensive. The instantaneous latency " +
+			"value is usually a good enough indication of the latency.\n" +
+			"latency = EmitTime - EventTime";
+
 	public static final String FETCH_LATENCY = "fetchLatency";
 	private static final String FETCH_LATENCY_DOC = "The latency occurred before Flink fetched the record. "
 		+ "fetchLatency = FetchTime - EventTime.";
@@ -61,6 +83,7 @@ public abstract class SourceMetrics extends AbstractMetrics {
 	public static final String IDLE_TIME_DOC = "The time in milliseconds that the source has not processed any record. "
 		+ "idleTime = CurrentTime - LastRecordProcessTime.";
 
+	// The common metric def for all sources. Histograms are disabled by default.
 	private static final MetricDef METRIC_DEF = new MetricDef()
 		.define(
 			NUM_BYTES_IN,
@@ -85,15 +108,26 @@ public abstract class SourceMetrics extends AbstractMetrics {
 		.define(
 			RECORD_SIZE,
 			RECORD_SIZE_DOC,
-			MetricSpec.histogram())
+			MetricSpec.histogram(),
+			false)
+		.define(
+			CURRENT_FETCH_LATENCY,
+			CURRENT_FETCH_LATENCY_DOC,
+			MetricSpec.gauge())
+		.define(
+			CURRENT_LATENCY,
+			CURRENT_LATENCY_DOC,
+			MetricSpec.gauge())
 		.define(
 			FETCH_LATENCY,
 			FETCH_LATENCY_DOC,
-			MetricSpec.histogram())
+			MetricSpec.histogram(),
+			false)
 		.define(
 			LATENCY,
 			LATENCY_DOC,
-			MetricSpec.histogram())
+			MetricSpec.histogram(),
+			false)
 		.define(
 			IDLE_TIME,
 			IDLE_TIME_DOC,
@@ -114,15 +148,19 @@ public abstract class SourceMetrics extends AbstractMetrics {
 	}
 
 	protected SourceMetrics(MetricGroup metricGroup, MetricDef additionalDef) {
-		super(metricGroup, METRIC_DEF.combine(additionalDef));
-		// Set the Idle time gauge.
-		setGauge(IDLE_TIME, (Gauge<Long>) () -> System.currentTimeMillis() - lastRecordProcessTime);
+		this(metricGroup, additionalDef, Collections.emptyMap());
+	}
 
-		numBytesInPerSec = get(NUM_BYTES_IN_PER_SEC);
-		numRecordsInPerSec = get(NUM_RECORDS_IN_PER_SEC);
-		recordSize = get(RECORD_SIZE);
-		fetchLatency = get(FETCH_LATENCY);
-		latency = get(LATENCY);
+	protected SourceMetrics(MetricGroup metricGroup, MetricDef additionalDef, Map<String, Boolean> metricSwitch) {
+		super(metricGroup, METRIC_DEF.combine(additionalDef), metricSwitch);
+
+		maybeSetGauge(IDLE_TIME, (Gauge<Long>) () -> System.currentTimeMillis() - lastRecordProcessTime);
+
+		numBytesInPerSec = getIfDefined(NUM_BYTES_IN_PER_SEC);
+		numRecordsInPerSec = getIfDefined(NUM_RECORDS_IN_PER_SEC);
+		recordSize = getIfDefined(RECORD_SIZE);
+		fetchLatency = getIfDefined(FETCH_LATENCY);
+		latency = getIfDefined(LATENCY);
 	}
 
 	/**
@@ -132,5 +170,16 @@ public abstract class SourceMetrics extends AbstractMetrics {
 	 */
 	public void updateLastRecordProcessTime(long time) {
 		lastRecordProcessTime = time;
+	}
+
+	private void maybeSetGauge(String name, Gauge gauge) {
+		if (allMetricNames().contains(name)) {
+			setGauge(name, gauge);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getIfDefined(String name) {
+		return (T) (allMetricNames().contains(name) ? get(name) : BlackHoleMetric.instance());
 	}
 }
