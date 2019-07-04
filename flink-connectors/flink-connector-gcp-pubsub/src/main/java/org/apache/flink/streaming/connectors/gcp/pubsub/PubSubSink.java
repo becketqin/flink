@@ -169,11 +169,10 @@ public class PubSubSink<IN> extends RichSinkFunction<IN> implements Checkpointed
 	/**
 	 * Create a builder for a new PubSubSink.
 	 *
-	 * @param <IN> The generic of the type that is to be written into the sink.
 	 * @return a new PubSubSinkBuilder instance
 	 */
-	public static <IN> SerializationSchemaBuilder<IN> newBuilder(Class<IN> clazz) {
-		return new PubSubSinkBuilder<>();
+	public static SerializationSchemaBuilder newBuilder() {
+		return new SerializationSchemaBuilder();
 	}
 
 	@Override
@@ -202,7 +201,7 @@ public class PubSubSink<IN> extends RichSinkFunction<IN> implements Checkpointed
 	 *
 	 * @param <IN> Type of PubSubSink to create.
 	 */
-	public static class PubSubSinkBuilder<IN> implements SerializationSchemaBuilder<IN>, ProjectNameBuilder<IN>, TopicNameBuilder<IN> {
+	public static class PubSubSinkBuilder<IN> implements ProjectNameBuilder<IN>, TopicNameBuilder<IN> {
 		private SerializationSchema<IN> serializationSchema;
 		private String projectName;
 		private String topicName;
@@ -210,7 +209,9 @@ public class PubSubSink<IN> extends RichSinkFunction<IN> implements Checkpointed
 		private Credentials credentials;
 		private String hostAndPort;
 
-		private PubSubSinkBuilder() { }
+		private PubSubSinkBuilder(SerializationSchema<IN> serializationSchema) {
+			this.serializationSchema = serializationSchema;
+		}
 
 		/**
 		 * Set the credentials.
@@ -221,13 +222,6 @@ public class PubSubSink<IN> extends RichSinkFunction<IN> implements Checkpointed
 		 */
 		public PubSubSinkBuilder<IN> withCredentials(Credentials credentials) {
 			this.credentials = credentials;
-			return this;
-		}
-
-		@Override
-		public ProjectNameBuilder<IN> withSerializationSchema(SerializationSchema<IN> serializationSchema) {
-			Preconditions.checkNotNull(serializationSchema);
-			this.serializationSchema = serializationSchema;
 			return this;
 		}
 
@@ -275,11 +269,13 @@ public class PubSubSink<IN> extends RichSinkFunction<IN> implements Checkpointed
 	/**
 	 * Part of {@link PubSubSinkBuilder} to set required fields.
 	 */
-	public interface SerializationSchemaBuilder<IN> {
+	public static class SerializationSchemaBuilder {
 		/**
 		 * Set the SerializationSchema used to Serialize objects to be added as payloads of PubSubMessages.
 		 */
-		ProjectNameBuilder<IN> withSerializationSchema(SerializationSchema<IN> deserializationSchema);
+		public <IN> ProjectNameBuilder<IN> withSerializationSchema(SerializationSchema<IN> deserializationSchema) {
+			return new PubSubSinkBuilder<>(deserializationSchema);
+		}
 	}
 
 	/**
