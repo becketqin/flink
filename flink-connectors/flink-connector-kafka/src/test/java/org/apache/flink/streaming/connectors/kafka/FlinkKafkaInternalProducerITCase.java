@@ -25,8 +25,10 @@ import org.apache.flink.shaded.guava18.com.google.common.collect.Iterables;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -36,6 +38,7 @@ import java.util.Properties;
 import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 /**
  * Tests for our own {@link FlinkKafkaInternalProducer}.
@@ -44,6 +47,7 @@ import static org.junit.Assert.assertEquals;
 public class FlinkKafkaInternalProducerITCase extends KafkaTestBase {
 	protected String transactionalId;
 	protected Properties extraProperties;
+	private volatile Exception exceptionInCallback;
 
 	@Before
 	public void before() {
@@ -59,26 +63,28 @@ public class FlinkKafkaInternalProducerITCase extends KafkaTestBase {
 	}
 
 	@Test(timeout = 30000L)
-	public void testHappyPath() throws IOException {
+	public void testHappyPath() throws Exception {
 		String topicName = "flink-kafka-producer-happy-path";
 		try (Producer<String, String> kafkaProducer = new FlinkKafkaInternalProducer<>(extraProperties)) {
 			kafkaProducer.initTransactions();
 			kafkaProducer.beginTransaction();
-			kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"));
+			kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"), new ErrorCheckingCallback());
 			kafkaProducer.commitTransaction();
 		}
+		assertNull("The message should have been successfully sent", exceptionInCallback);
 		assertRecord(topicName, "42", "42");
 		deleteTestTopic(topicName);
 	}
 
 	@Test(timeout = 30000L)
-	public void testResumeTransaction() throws IOException {
+	public void testResumeTransaction() throws Exception {
 		String topicName = "flink-kafka-producer-resume-transaction";
 		try (FlinkKafkaInternalProducer<String, String> kafkaProducer = new FlinkKafkaInternalProducer<>(extraProperties)) {
 			kafkaProducer.initTransactions();
 			kafkaProducer.beginTransaction();
-			kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"));
+			kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"), new ErrorCheckingCallback());
 			kafkaProducer.flush();
+			assertNull("The message should have been successfully sent", exceptionInCallback);
 			long producerId = kafkaProducer.getProducerId();
 			short epoch = kafkaProducer.getEpoch();
 
@@ -156,19 +162,30 @@ public class FlinkKafkaInternalProducerITCase extends KafkaTestBase {
 		FlinkKafkaInternalProducer<String, String> kafkaProducer = new FlinkKafkaInternalProducer<>(extraProperties);
 		kafkaProducer.initTransactions();
 		kafkaProducer.beginTransaction();
-		kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"));
+		kafkaProducer.send(new ProducerRecord<>(topicName, "42", "42"), new ErrorCheckingCallback());
 		kafkaProducer.close();
+		assertNull("The message should have been successfully sent", exceptionInCallback);
 		return kafkaProducer;
 	}
 
 	private void assertRecord(String topicName, String expectedKey, String expectedValue) {
 		try (KafkaConsumer<String, String> kafkaConsumer = new KafkaConsumer<>(extraProperties)) {
 			kafkaConsumer.subscribe(Collections.singletonList(topicName));
-			ConsumerRecords<String, String> records = kafkaConsumer.poll(10000);
+			ConsumerRecords<String, String> records = ConsumerRecords.empty();
+			while (records.isEmpty()) {
+				records = kafkaConsumer.poll(10000);
+			}
 
 			ConsumerRecord<String, String> record = Iterables.getOnlyElement(records);
 			assertEquals(expectedKey, record.key());
 			assertEquals(expectedValue, record.value());
+		}
+	}
+
+	private class ErrorCheckingCallback implements Callback {
+		@Override
+		public void onCompletion(RecordMetadata metadata, Exception exception) {
+			exceptionInCallback = exception;
 		}
 	}
 }
