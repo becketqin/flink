@@ -17,6 +17,7 @@
 
 package org.apache.flink.impl.connector.source.coordinator;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.connectors.source.ReaderInfo;
@@ -33,7 +34,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /**
  * A class that runs a {@link org.apache.flink.api.connectors.source.SplitEnumerator}.
@@ -47,16 +51,20 @@ import java.util.concurrent.CompletableFuture;
  * 2. some splits are added back to the enumerator, probably due to a source reader failure.
  * 3. a new split is discovered
  */
+@Internal
 public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implements AutoCloseable {
 	private static final Logger LOG = LoggerFactory.getLogger(SourceCoordinator.class);
+	private final ExecutorService coordinatorExecutor;
 	private final SplitEnumerator<SplitT, CheckpointT> enumerator;
 	private final SimpleVersionedSerializer<CoordinatorState<SplitT, CheckpointT>> stateSerializer;
 	private final ValueState<byte[]> coordinatorState;
 	private final SourceCoordinatorContext<SplitT> context;
 
-	public SourceCoordinator(SplitEnumerator<SplitT, CheckpointT> enumerator,
+	public SourceCoordinator(ExecutorService coordinatorExecutor,
+							 SplitEnumerator<SplitT, CheckpointT> enumerator,
 							 SourceCoordinatorContext<SplitT> context,
 							 SimpleVersionedSerializer<CoordinatorState<SplitT, CheckpointT>> stateSerializer) {
+		this.coordinatorExecutor = coordinatorExecutor;
 		this.enumerator = enumerator;
 		this.coordinatorState = context.getState(new ValueStateDescriptor<>("CoordinatorState", byte[].class));
 		this.stateSerializer = stateSerializer;
@@ -68,24 +76,28 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	@Override
 	public void close() throws Exception {
 		enumerator.close();
+		coordinatorExecutor.shutdown();
 	}
 
 	/**
-	 * Snapshot the state of assigner tracker and split enumerator.
+	 * Take a snapshot of the source coordinator. The invocation returns a future that will be completed
+	 * with a null if the snapshot was taken successfully. Otherwise the future will be completed with
+	 * an exception.
 	 *
-	 * @param checkpointId the checkpoint id.
+	 * @param checkpointId The checkpoint id of the snapshot being taken.
+	 * @return A future that will be completed with null if the snapshot is successfully taken, or be
+	 * completed with an exception otherwise.
 	 */
-	public void snapshotState(long checkpointId) {
-		CompletableFuture<Boolean> future = new CompletableFuture<>();
-		try {
-			CoordinatorState<SplitT, CheckpointT> coordState =
-					new CoordinatorState<>(checkpointId, enumerator, context);
-			coordinatorState.update(stateSerializer.serialize(coordState));
-			future.complete(true);
-		} catch (IOException e) {
-			LOG.warn("Failed to take snapshot on the SourceCoordinator.");
-			future.complete(false);
-		}
+	public Future<Exception> snapshotState(long checkpointId) {
+		return coordinatorExecutor.submit(asCallable(() -> {
+			try {
+				CoordinatorState<SplitT, CheckpointT> coordState =
+						new CoordinatorState<>(checkpointId, enumerator, context);
+				coordinatorState.update(stateSerializer.serialize(coordState));
+			} catch (IOException e) {
+				LOG.warn("Failed to take snapshot on the SourceCoordinator.");
+			}
+		}));
 	}
 
 	/**
@@ -94,15 +106,17 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	 * @param subtaskId the subtask id of the operator event sender.
 	 * @param event the received operator event.
 	 */
-	void handleOperatorEvent(int subtaskId, OperatorEvent event) {
-		if (event instanceof SourceEvent) {
-			enumerator.handleSourceEvent(subtaskId, (SourceEvent) event);
-		} else if (event instanceof ReaderRegistrationEvent) {
-			handleReaderRegistrationEvent((ReaderRegistrationEvent) event);
-		} else if (event instanceof ReaderFailedEvent) {
-			handleReaderFailedEvent((ReaderFailedEvent) event);
-		}
-		enumerator.updateAssignment();
+	public Future<Exception> handleOperatorEvent(int subtaskId, OperatorEvent event) {
+		return coordinatorExecutor.submit(asCallable(() -> {
+			if (event instanceof SourceEvent) {
+				enumerator.handleSourceEvent(subtaskId, (SourceEvent) event);
+			} else if (event instanceof ReaderRegistrationEvent) {
+				handleReaderRegistrationEvent((ReaderRegistrationEvent) event);
+			} else if (event instanceof ReaderFailedEvent) {
+				handleReaderFailedEvent((ReaderFailedEvent) event);
+			}
+			enumerator.updateAssignment();
+		}));
 	}
 
 	// --------------------- private methods -------------
@@ -113,5 +127,16 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	private void handleReaderFailedEvent(ReaderFailedEvent event) {
 		List<SplitT> splitsToAddBack = context.getAndRemoveUncheckpointedAssignment(event.subtaskId());
 		enumerator.addSplitsBack(splitsToAddBack);
+	}
+
+	private static Callable<Exception> asCallable(Runnable runnable) {
+		return () -> {
+			try {
+				runnable.run();
+				return null;
+			} catch (Exception e) {
+				return e;
+			}
+		};
 	}
 }

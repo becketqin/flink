@@ -75,7 +75,7 @@ public interface SplitEnumerator<SplitT extends SourceSplit, CheckpointT> extend
 	void addSplitsBack(List<SplitT> splits);
 
 	/**
-	 * A method that returns a future that will be completed when a split assignment is available.
+	 * A method that updates the split assignment synchronously.
 	 * A typical implementation would just assign the splits synchronously when this method is
 	 * invoked for the first time. And afterwards, only update the assignments when some event
 	 * happens, some examples of the events are:

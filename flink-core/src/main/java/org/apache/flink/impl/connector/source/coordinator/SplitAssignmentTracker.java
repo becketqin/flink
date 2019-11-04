@@ -17,6 +17,7 @@
 
 package org.apache.flink.impl.connector.source.coordinator;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;
 
@@ -30,6 +31,7 @@ import java.util.Map;
  * A class that is responsible for tracking the past split assignments made by
  * {@link org.apache.flink.api.connectors.source.SplitEnumerator}.
  */
+@Internal
 public class SplitAssignmentTracker<SplitT extends SourceSplit> {
 	private final UncheckpointedSplitsAssignment<SplitT> uncheckpointedAssignment;
 	private final Map<Integer, List<SplitT>> currentAssignment;

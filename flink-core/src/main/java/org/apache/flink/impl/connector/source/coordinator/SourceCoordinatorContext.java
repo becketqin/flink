@@ -17,6 +17,7 @@
 
 package org.apache.flink.impl.connector.source.coordinator;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ValueState;
 import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.connectors.source.ReaderInfo;
@@ -43,6 +44,7 @@ import java.util.function.BiFunction;
  *
  * @param <SplitT> the type of the splits.
  */
+@Internal
 public class SourceCoordinatorContext<SplitT extends SourceSplit> implements SplitEnumeratorContext<SplitT> {
 	private ExecutorNotifier notifier;
 	private final Map<Integer, ReaderInfo> registeredReaders;
