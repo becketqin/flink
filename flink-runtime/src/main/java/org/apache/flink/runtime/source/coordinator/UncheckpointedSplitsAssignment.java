@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.coordinator;
+package org.apache.flink.runtime.source.coordinator;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;

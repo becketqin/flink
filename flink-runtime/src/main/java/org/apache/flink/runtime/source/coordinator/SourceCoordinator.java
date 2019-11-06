@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.coordinator;
+package org.apache.flink.runtime.source.coordinator;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ValueState;
@@ -39,10 +39,8 @@ import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 import java.util.function.Supplier;
 
 /**

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.coordinator;
+package org.apache.flink.runtime.source.coordinator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

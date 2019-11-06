@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.coordinator;
+package org.apache.flink.runtime.source.coordinator;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connectors.source.SourceSplit;
@@ -30,7 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.apache.flink.impl.connector.source.coordinator.CoordinatorSerdeUtils.convertAssignment;
+import static org.apache.flink.runtime.source.coordinator.CoordinatorSerdeUtils.convertAssignment;
 
 /**
  * A class that is responsible for tracking the past split assignments made by

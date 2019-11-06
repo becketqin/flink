@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.coordinator;
+package org.apache.flink.runtime.source.coordinator;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ValueState;
@@ -30,7 +30,6 @@ import org.apache.flink.api.connectors.source.event.SourceEvent;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
 
-import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collections;
