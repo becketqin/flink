@@ -20,6 +20,7 @@ package org.apache.flink.runtime.taskexecutor;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.blob.BlobServer;
 import org.apache.flink.runtime.blob.TransientBlobKey;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
@@ -138,6 +139,19 @@ public interface TaskExecutorGateway extends RpcGateway {
 	 * @return Future acknowledge if the checkpoint has been successfully confirmed
 	 */
 	CompletableFuture<Acknowledge> confirmCheckpoint(ExecutionAttemptID executionAttemptID, long checkpointId, long checkpointTimestamp);
+
+	/**
+	 * Handle the operator event from the master.
+	 *
+	 * @param event The operator event sent by the job master.
+	 * @param executionAttemptID The id of the running task.
+	 * @param jobId The id of the job to which the task belongs.
+	 * @return Future acknowledge if the operator event has been handled.
+	 */
+	CompletableFuture<Acknowledge> handleOperatorEvent(
+		OperatorEvent event,
+		ExecutionAttemptID executionAttemptID,
+		JobID jobId);
 
 	/**
 	 * Cancel the given task.

@@ -22,6 +22,7 @@ package org.apache.flink.runtime.scheduler;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.CheckpointingOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
@@ -65,6 +66,7 @@ import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.jobmanager.PartitionProducerDisposedException;
 import org.apache.flink.runtime.jobmaster.SerializedInputSplit;
 import org.apache.flink.runtime.jobmaster.slotpool.SlotProvider;
+import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.FlinkJobNotFoundException;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
@@ -467,21 +469,8 @@ public abstract class SchedulerBase implements SchedulerNG {
 	public SerializedInputSplit requestNextInputSplit(JobVertexID vertexID, ExecutionAttemptID executionAttempt) throws IOException {
 		mainThreadExecutor.assertRunningInMainThread();
 
-		final Execution execution = executionGraph.getRegisteredExecutions().get(executionAttempt);
-		if (execution == null) {
-			// can happen when JobManager had already unregistered this execution upon on task failure,
-			// but TaskManager get some delay to aware of that situation
-			if (log.isDebugEnabled()) {
-				log.debug("Can not find Execution for attempt {}.", executionAttempt);
-			}
-			// but we should TaskManager be aware of this
-			throw new IllegalArgumentException("Can not find Execution for attempt " + executionAttempt);
-		}
-
-		final ExecutionJobVertex vertex = executionGraph.getJobVertex(vertexID);
-		if (vertex == null) {
-			throw new IllegalArgumentException("Cannot find execution vertex for vertex ID " + vertexID);
-		}
+		final Execution execution = validateAndGetExecution(executionAttempt);
+		final ExecutionJobVertex vertex = validateAndGetExecutionJobVetex(vertexID);
 
 		if (vertex.getSplitAssigner() == null) {
 			throw new IllegalStateException("No InputSplitAssigner for vertex ID " + vertexID);
@@ -502,6 +491,39 @@ public abstract class SchedulerBase implements SchedulerNG {
 			vertex.fail(reason);
 			throw reason;
 		}
+	}
+
+	@Override
+	public CompletableFuture<Optional<Exception>> handleOperatorEvent(
+			OperatorEvent event,
+			JobVertexID vertexID,
+			ExecutionAttemptID executionAttempt) {
+		mainThreadExecutor.assertRunningInMainThread();
+		final Execution execution = validateAndGetExecution(executionAttempt);
+		validateAndGetExecutionJobVetex(vertexID);
+		return execution.handleOperatorEvent(event);
+	}
+
+	private Execution validateAndGetExecution(ExecutionAttemptID executionAttempt) {
+		final Execution execution = executionGraph.getRegisteredExecutions().get(executionAttempt);
+		if (execution == null) {
+			// can happen when JobManager had already unregistered this execution upon on task failure,
+			// but TaskManager get some delay to aware of that situation
+			if (log.isDebugEnabled()) {
+				log.debug("Can not find Execution for attempt {}.", executionAttempt);
+			}
+			// but we should TaskManager be aware of this
+			throw new IllegalArgumentException("Can not find Execution for attempt " + executionAttempt);
+		}
+		return execution;
+	}
+
+	private ExecutionJobVertex validateAndGetExecutionJobVetex(JobVertexID vertexID) {
+		final ExecutionJobVertex vertex = executionGraph.getJobVertex(vertexID);
+		if (vertex == null) {
+			throw new IllegalArgumentException("Cannot find execution vertex for vertex ID " + vertexID);
+		}
+		return vertex;
 	}
 
 	@Override

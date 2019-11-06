@@ -21,6 +21,7 @@ package org.apache.flink.runtime.jobmaster;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.queryablestate.KvStateID;
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot;
@@ -395,6 +396,19 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 			return CompletableFuture.completedFuture(schedulerNG.requestNextInputSplit(vertexID, executionAttempt));
 		} catch (IOException e) {
 			log.warn("Error while requesting next input split", e);
+			return FutureUtils.completedExceptionally(e);
+		}
+	}
+
+	@Override
+	public CompletableFuture<Optional<Exception>> handleOperatorEvent(
+			OperatorEvent event,
+			JobVertexID vertexID,
+			ExecutionAttemptID executionAttempt) {
+		try {
+			return schedulerNG.handleOperatorEvent(event, vertexID, executionAttempt);
+		} catch (Exception e) {
+			log.warn("Error while handling operator event {}", event, e);
 			return FutureUtils.completedExceptionally(e);
 		}
 	}

@@ -68,7 +68,7 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 	}
 
 	@Override
-	public void addSplitsBack(List<KafkaPartition> splits) {
+	public void addSplitsBack(List<KafkaPartition> splits, int subtaskId) {
 		unassignedPartitions.addAll(splits);
 		if (!unassignedPartitions.isEmpty()) {
 			context.notifyNewAssignment();
@@ -93,6 +93,11 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 	@Override
 	public KafkaPartitionsCheckpoint snapshotState() {
 		return null;
+	}
+
+	@Override
+	public void restoreState(KafkaPartitionsCheckpoint checkpoint) {
+
 	}
 
 	@Override

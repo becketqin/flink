@@ -20,6 +20,7 @@ package org.apache.flink.runtime.jobmaster;
 
 import org.apache.flink.api.common.functions.AggregateFunction;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.checkpoint.CheckpointCoordinatorGateway;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.clusterframework.types.ResourceID;
@@ -48,6 +49,7 @@ import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import javax.annotation.Nullable;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -86,6 +88,19 @@ public interface JobMasterGateway extends
 	 * @return The future of the input split. If there is no further input split, will return an empty object.
 	 */
 	CompletableFuture<SerializedInputSplit> requestNextInputSplit(
+			final JobVertexID vertexID,
+			final ExecutionAttemptID executionAttempt);
+
+	/**
+	 * Sends an operator event to the JobMaster.
+	 *
+	 * @param event            The operator event to send to the JobMaster.
+	 * @param vertexID         The job vertex id.
+	 * @param executionAttempt The execution attempt id.
+	 * @return An acknowledge message when the operator event has been successfully handled.
+	 */
+	CompletableFuture<Optional<Exception>> handleOperatorEvent(
+			final OperatorEvent event,
 			final JobVertexID vertexID,
 			final ExecutionAttemptID executionAttempt);
 

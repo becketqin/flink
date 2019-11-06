@@ -20,6 +20,7 @@ package org.apache.flink.runtime.jobmaster.utils;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.tuple.Tuple6;
@@ -58,6 +59,7 @@ import javax.annotation.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -221,6 +223,13 @@ public class TestingJobMasterGateway implements JobMasterGateway {
 	@Override
 	public CompletableFuture<SerializedInputSplit> requestNextInputSplit(JobVertexID vertexID, ExecutionAttemptID executionAttempt) {
 		return requestNextInputSplitFunction.apply(vertexID, executionAttempt);
+	}
+
+	@Override
+	public CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event,
+																	  JobVertexID vertexID,
+																	  ExecutionAttemptID executionAttempt) {
+		return null;
 	}
 
 	@Override

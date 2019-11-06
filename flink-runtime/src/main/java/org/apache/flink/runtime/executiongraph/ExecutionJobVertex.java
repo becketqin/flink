@@ -26,10 +26,12 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
 import org.apache.flink.core.io.InputSplitSource;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.accumulators.StringifiedAccumulatorResult;
 import org.apache.flink.runtime.blob.BlobWriter;
@@ -64,6 +66,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -134,6 +137,8 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 	private Either<SerializedValue<TaskInformation>, PermanentBlobKey> taskInformationOrBlobKey = null;
 
 	private InputSplitAssigner splitAssigner;
+
+	private SourceCoordinator sourceCoordinator;
 
 	/**
 	 * Convenience constructor for testing.
@@ -363,6 +368,13 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 
 	public InputSplitAssigner getSplitAssigner() {
 		return splitAssigner;
+	}
+
+	public CompletableFuture<Optional<Exception>> handleOperatorEvent(int taskId, OperatorEvent event) {
+		if (sourceCoordinator == null) {
+			throw new IllegalStateException("Cannot find SourceCoordinator to handle the operator event");
+		}
+		return sourceCoordinator.handleOperatorEvent(taskId, event);
 	}
 
 	@Nullable

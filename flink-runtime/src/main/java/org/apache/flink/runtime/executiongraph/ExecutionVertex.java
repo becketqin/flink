@@ -23,6 +23,7 @@ import org.apache.flink.api.common.Archiveable;
 import org.apache.flink.api.common.InputDependencyConstraint;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
@@ -61,6 +62,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
@@ -269,6 +271,11 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 			}
 			return nextInputSplit;
 		}
+	}
+
+	public CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event) {
+		final int taskId = getParallelSubtaskIndex();
+		return jobVertex.handleOperatorEvent(taskId, event);
 	}
 
 	@Override

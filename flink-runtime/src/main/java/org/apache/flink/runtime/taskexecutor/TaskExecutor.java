@@ -21,6 +21,7 @@ package org.apache.flink.runtime.taskexecutor;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.accumulators.AccumulatorSnapshot;
 import org.apache.flink.runtime.blob.BlobCacheService;
 import org.apache.flink.runtime.blob.TransientBlobCache;
@@ -805,6 +806,13 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 			log.debug(message);
 			return FutureUtils.completedExceptionally(new CheckpointException(message, CheckpointFailureReason.TASK_CHECKPOINT_FAILURE));
 		}
+	}
+
+	@Override
+	public CompletableFuture<Acknowledge> handleOperatorEvent(OperatorEvent event,
+															  ExecutionAttemptID executionAttemptID,
+															  JobID jobId) {
+		return null;
 	}
 
 	// ----------------------------------------------------------------------
