@@ -21,6 +21,7 @@ import java.util.List;
 
 /**
  * A source event that adds splits to a source reader.
+ *
  * @param <SplitT> the type of splits.
  */
 public class AddSplitEvent<SplitT> implements OperatorEvent {

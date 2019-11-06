@@ -17,7 +17,9 @@
 
 package org.apache.flink.api.connectors.source;
 
-public class ReaderInfo {
+import java.io.Serializable;
+
+public class ReaderInfo implements Serializable {
 	private final int subtaskId;
 	private final String location;
 

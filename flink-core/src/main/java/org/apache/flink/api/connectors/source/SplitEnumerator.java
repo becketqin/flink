@@ -21,9 +21,6 @@ import org.apache.flink.api.connectors.source.event.SourceEvent;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * The enumerator is responsible for doing the following:
@@ -70,9 +67,10 @@ public interface SplitEnumerator<SplitT extends SourceSplit, CheckpointT> extend
 	 * Add a split back to the split enumerator. It will only happen when a {@link SourceReader} fails
 	 * and there are splits assigned to it after the last successful checkpoint.
 	 *
-	 * @param splits the split to add back to the enumerator for reassignment.
+	 * @param splits The split to add back to the enumerator for reassignment.
+	 * @param subtaskId The id of the subtask to which the returned splits belong.
 	 */
-	void addSplitsBack(List<SplitT> splits);
+	void addSplitsBack(List<SplitT> splits, int subtaskId);
 
 	/**
 	 * A method that updates the split assignment synchronously.
@@ -92,6 +90,13 @@ public interface SplitEnumerator<SplitT extends SourceSplit, CheckpointT> extend
 	 * Checkpoints the state of this split enumerator.
 	 */
 	CheckpointT snapshotState();
+
+	/**
+	 * Restore the state of this enumerator from the checkpoint.
+	 *
+	 * @param checkpoint the checkpoint that was returned by the enumerator in {@link #snapshotState()}.
+	 */
+	void restoreState(CheckpointT checkpoint);
 
 	/**
 	 * Called to close the enumerator, in case it holds on to any resources, like threads or
