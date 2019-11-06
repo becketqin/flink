@@ -27,8 +27,12 @@ import org.apache.flink.api.connectors.source.SplitsAssignment;
 import org.apache.flink.api.connectors.source.event.AddSplitEvent;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.api.connectors.source.event.SourceEvent;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
 
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -137,11 +141,15 @@ public class SourceCoordinatorContext<SplitT extends SourceSplit> implements Spl
 	 * Take a snapshot of this SourceCoordinatorContext and return the currently uncheckpointed splits
 	 * assignment.
 	 *
-	 * @param checkpointId the id of the ongoing checkpoint.
-	 * @return A map of splits assignments that has not been successfully checkpointed.
+	 * @param checkpointId The id of the ongoing checkpoint.
+	 * @param splitSerializer The serializer of the splits.
+	 * @param out An ObjectOutput that can be used to
 	 */
-	Map<Long, Map<Integer, List<SplitT>>> snapshotState(long checkpointId) {
-		return assignmentTracker.snapshotState(checkpointId);
+	void snapshotState(long checkpointId,
+					   SimpleVersionedSerializer<SplitT> splitSerializer,
+					   ObjectOutput out) throws Exception {
+		out.writeObject(registeredReaders);
+		assignmentTracker.snapshotState(checkpointId, splitSerializer, out);
 	}
 
 	/**
@@ -163,5 +171,12 @@ public class SourceCoordinatorContext<SplitT extends SourceSplit> implements Spl
 	 */
 	List<SplitT> getAndRemoveUncheckpointedAssignment(int failedSubtaskId) {
 		return assignmentTracker.getAndRemoveUncheckpointedAssignment(failedSubtaskId);
+	}
+
+	void restoreState(SimpleVersionedSerializer<SplitT> splitSerializer,
+					  ObjectInput in) throws Exception {
+		Map<Integer, ReaderInfo> readers = (Map<Integer, ReaderInfo>) in.readObject();
+		registeredReaders.putAll(readers);
+		assignmentTracker.restoreState(splitSerializer, in);
 	}
 }

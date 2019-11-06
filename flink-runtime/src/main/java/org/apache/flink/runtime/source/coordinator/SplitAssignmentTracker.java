@@ -20,12 +20,17 @@ package org.apache.flink.impl.connector.source.coordinator;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
 
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.apache.flink.impl.connector.source.coordinator.CoordinatorSerdeUtils.convertAssignment;
 
 /**
  * A class that is responsible for tracking the past split assignments made by
@@ -47,9 +52,35 @@ public class SplitAssignmentTracker<SplitT extends SourceSplit> {
 	 * @param checkpointId the id of the ongoing checkpoint
 	 * @return the uncheckpointed splits assignment that needs to be saved.
 	 */
-	public Map<Long, Map<Integer, List<SplitT>>> snapshotState(long checkpointId) {
-		uncheckpointedAssignment.snapshotState(checkpointId);
-		return uncheckpointedAssignment.assignmentsByCheckpoints();
+	public void snapshotState(long checkpointId,
+							  SimpleVersionedSerializer<SplitT> splitSerializer,
+							  ObjectOutput out) throws Exception {
+		// Write the split serializer version.
+		out.write(splitSerializer.getVersion());
+		// Write the uncheckpointed assignments to the snapshot.
+		uncheckpointedAssignment.snapshotState(checkpointId, splitSerializer, out);
+		// Write the current assignment to the snapshot.
+		out.writeObject(convertAssignment(currentAssignment, splitSerializer::serialize));
+	}
+
+	/**
+	 * Restore the state of the SplitAssignmentTracker.
+	 *
+	 * @param splitSerializer The serializer of the splits.
+	 * @param in The ObjectInput that contains the state of the SplitAssignmentTracker.
+	 * @throws Exception when the state deserialization fails.
+	 */
+	@SuppressWarnings("unchecked")
+	public void restoreState(SimpleVersionedSerializer<SplitT> splitSerializer,
+							 ObjectInput in) throws Exception {
+		int version = in.readInt();
+		uncheckpointedAssignment.restoreState(splitSerializer, version, in);
+
+		Map<Integer, List<byte[]>> serializedAssignments = (Map<Integer, List<byte[]>>) in.readObject();
+		Map<Integer, List<SplitT>> assignments = CoordinatorSerdeUtils.convertAssignment(
+				serializedAssignments,
+				(byte[] serializedSplit) -> splitSerializer.deserialize(version, serializedSplit));
+		currentAssignment.putAll(assignments);
 	}
 
 	/**

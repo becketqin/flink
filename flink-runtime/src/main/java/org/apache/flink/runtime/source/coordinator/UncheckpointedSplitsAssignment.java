@@ -19,9 +19,12 @@ package org.apache.flink.impl.connector.source.coordinator;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.util.function.FunctionWithException;
 
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +33,16 @@ import java.util.TreeMap;
 
 /**
  * A class that helps track the uncheckpointed splits assignments per checkpoint.
+ * This is needed when a SourceReader fails and we only want to restart the sub-graph
+ * of that failed SourceReader, without restarting the entire DAG. In that case,
+ * the state of the SplitEnumerator needs to be partially restored. More specifically,
+ * the splits assigned to the failed SourceReader will have to be rolled back to
+ * the last successful checkpoint.
  */
 class UncheckpointedSplitsAssignment<SplitT extends SourceSplit> {
+	// All the split assignments since the last successful checkpoint.
 	private final SortedMap<Long, Map<Integer, List<SplitT>>> assignmentsByCheckpoints;
+	// The split assignments since the last checkpoint attempt.
 	private Map<Integer, List<SplitT>> uncheckpointedAssignments;
 
 	UncheckpointedSplitsAssignment() {
@@ -51,13 +61,14 @@ class UncheckpointedSplitsAssignment<SplitT extends SourceSplit> {
 		}
 	}
 
-	Map<Long, Map<Integer, List<SplitT>>> assignmentsByCheckpoints() {
-		return Collections.unmodifiableMap(assignmentsByCheckpoints);
-	}
-
-	void snapshotState(long checkpointId) {
+	void snapshotState(long checkpointId,
+					   SimpleVersionedSerializer<SplitT> splitSerializer,
+					   ObjectOutput out) throws Exception {
 		assignmentsByCheckpoints.put(checkpointId, uncheckpointedAssignments);
 		uncheckpointedAssignments = new HashMap<>();
+		Map<Long, Map<Integer, List<byte[]>>> serializedState = convertAssignmentsByCheckpoints(
+				assignmentsByCheckpoints, splitSerializer::serialize);
+		out.writeObject(serializedState);
 	}
 
 	void onCheckpointCompleted(long checkpointId) {
@@ -73,5 +84,32 @@ class UncheckpointedSplitsAssignment<SplitT extends SourceSplit> {
 			}
 		});
 		return splits;
+	}
+
+	@SuppressWarnings("unchecked")
+	void restoreState(SimpleVersionedSerializer<SplitT> splitSerializer,
+					  int serializedVersion,
+					  ObjectInput in) throws Exception {
+		Map<Long, Map<Integer, List<byte[]>>> serializedState =
+				(Map<Long, Map<Integer, List<byte[]>>>) in.readObject();
+		Map<Long, Map<Integer, List<SplitT>>> deserializedState = convertAssignmentsByCheckpoints(
+				serializedState,
+				(byte[] splitBytes) -> splitSerializer.deserialize(serializedVersion, splitBytes));
+		assignmentsByCheckpoints.putAll(deserializedState);
+	}
+
+	// ------ private helpers --------
+
+	private static <S, T> Map<Long, Map<Integer, List<T>>> convertAssignmentsByCheckpoints(
+			Map<Long, Map<Integer, List<S>>> uncheckpiontedAssignments,
+			FunctionWithException<S, T, Exception> converter) throws Exception {
+		// First Serialize splits into bytes.
+		Map<Long, Map<Integer, List<T>>> targetSplitsContextCkpt = new HashMap<>(uncheckpiontedAssignments.size());
+		for (Map.Entry<Long, Map<Integer, List<S>>> ckptEntry : uncheckpiontedAssignments.entrySet()) {
+			targetSplitsContextCkpt.put(
+					ckptEntry.getKey(),
+					CoordinatorSerdeUtils.convertAssignment(ckptEntry.getValue(), converter));
+		}
+		return targetSplitsContextCkpt;
 	}
 }
