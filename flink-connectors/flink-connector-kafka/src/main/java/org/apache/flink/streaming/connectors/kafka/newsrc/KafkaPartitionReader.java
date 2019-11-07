@@ -136,11 +136,6 @@ public class KafkaPartitionReader<K, V> implements SplitReader<ConsumerRecord<K,
 		consumer.wakeup();
 	}
 
-	@Override
-	public void configure(Configuration config) {
-
-	}
-
 	private void unassign(TopicPartition tp) {
 		Set<TopicPartition> newAssignments = new HashSet<>(consumer.assignment());
 		newAssignments.remove(tp);

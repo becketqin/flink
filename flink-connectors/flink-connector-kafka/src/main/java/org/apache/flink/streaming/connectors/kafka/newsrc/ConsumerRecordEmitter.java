@@ -27,7 +27,7 @@ public class ConsumerRecordEmitter<K, V>
 	@Override
 	public void emitRecord(ConsumerRecord<K, V> element,
 						   SourceOutput<ConsumerRecord<K, V>> output,
-						   PartitionState<K, V> splitState) {
+						   PartitionState<K, V> splitState) throws Exception {
 		output.collect(element, element.timestamp());
 		splitState.maybeUpdate(element);
 	}

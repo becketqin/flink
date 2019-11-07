@@ -26,6 +26,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.impl.connector.source.reader.synchronization.FutureNotifier;
+import org.apache.flink.streaming.connectors.kafka.newsrc.enumerator.KafkaPartitionEnumerator;
+import org.apache.flink.streaming.connectors.kafka.newsrc.enumerator.KafkaPartitionsCheckpoint;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.io.IOException;
@@ -33,35 +35,42 @@ import java.io.IOException;
 /**
  * The Kafka source class.
  */
-public class KafkaSource<K, V> implements Source {
+public class KafkaSource<K, V, T> implements Source<T, KafkaPartition, KafkaPartitionsCheckpoint> {
 
 	@Override
-	public SourceReader createReader(Configuration config, SourceContext context) throws IOException {
+	public SourceReader createReader(Configuration config, SourceContext context) {
 		FutureNotifier futureNotifier = new FutureNotifier();
 		FutureCompletingBlockingQueue<RecordsWithSplitIds<ConsumerRecord<K, V>>> elementQueue =
 				new FutureCompletingBlockingQueue<>(futureNotifier);
-		return new KafkaSourceReader<>(futureNotifier,
-									   elementQueue,
-									   () -> new KafkaPartitionReader<>(config), new ConsumerRecordEmitter<>());
+		return new KafkaSourceReader<>(
+				futureNotifier,
+				elementQueue,
+				() -> new KafkaPartitionReader<>(config),
+				new ConsumerRecordEmitter<>(),
+				config);
 	}
 
 	@Override
-	public SplitEnumerator createEnumerator(Configuration config) throws IOException {
+	public SplitEnumerator<KafkaPartition, KafkaPartitionsCheckpoint> createEnumerator(Configuration config) {
+		return new KafkaPartitionEnumerator(config);
+	}
+
+	@Override
+	public SplitEnumerator<KafkaPartition, KafkaPartitionsCheckpoint> restoreEnumerator(
+			Configuration config,
+			KafkaPartitionsCheckpoint checkpoint) {
+		KafkaPartitionEnumerator enumerator = new KafkaPartitionEnumerator(config);
+		enumerator.restoreState(checkpoint);
+		return enumerator;
+	}
+
+	@Override
+	public SimpleVersionedSerializer<KafkaPartition> getSplitSerializer() {
 		return null;
 	}
 
 	@Override
-	public SplitEnumerator restoreEnumerator(Configuration config, Object checkpoint) throws IOException {
-		return null;
-	}
-
-	@Override
-	public SimpleVersionedSerializer getSplitSerializer() {
-		return null;
-	}
-
-	@Override
-	public SimpleVersionedSerializer getEnumeratorCheckpointSerializer() {
+	public SimpleVersionedSerializer<KafkaPartitionsCheckpoint> getEnumeratorCheckpointSerializer() {
 		return null;
 	}
 }

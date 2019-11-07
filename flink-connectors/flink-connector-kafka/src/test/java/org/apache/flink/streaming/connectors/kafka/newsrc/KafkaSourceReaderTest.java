@@ -63,20 +63,20 @@ public class KafkaSourceReaderTest extends SourceReaderTest<KafkaPartition> {
 		kafkaService.shutDownServices();
 	}
 
-
 	@Override
 	protected SourceReader<Integer, KafkaPartition> createReader(Boundedness boundedness) {
+		Configuration config = getConfig(Boundedness.BOUNDED);
 		FutureNotifier futureNotifier = new FutureNotifier();
 		FutureCompletingBlockingQueue<RecordsWithSplitIds<ConsumerRecord<Integer, Integer>>> elementQueue =
 				new FutureCompletingBlockingQueue<>(futureNotifier);
 		Supplier<SplitReader<ConsumerRecord<Integer, Integer>, KafkaPartition>> partitionReaderFactory =
-				() -> new KafkaPartitionReader<>(getConfig(Boundedness.BOUNDED));
+				() -> new KafkaPartitionReader<>(config);
 		RecordEmitter<ConsumerRecord<Integer, Integer>, Integer, PartitionState<Integer, Integer>> recordEmitter =
 				(element, output, splitState) -> {
 					output.collect(element.value());
 					splitState.maybeUpdate(element);
 				};
-		return new KafkaSourceReader<>(futureNotifier, elementQueue, partitionReaderFactory, recordEmitter);
+		return new KafkaSourceReader<>(futureNotifier, elementQueue, partitionReaderFactory, recordEmitter, config);
 	}
 
 	@Override

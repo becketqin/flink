@@ -17,6 +17,7 @@
 
 package org.apache.flink.streaming.connectors.kafka.newsrc;
 
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.impl.connector.source.reader.RecordEmitter;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.SingleThreadMultiplexSourceReaderBase;
@@ -39,10 +40,10 @@ public class KafkaSourceReader<K, V, T> extends SingleThreadMultiplexSourceReade
 			FutureNotifier futureNotifier,
 			FutureCompletingBlockingQueue<RecordsWithSplitIds<ConsumerRecord<K, V>>> elementsQueue,
 			Supplier<SplitReader<ConsumerRecord<K, V>, KafkaPartition>> splitFetcherSupplier,
-			RecordEmitter<ConsumerRecord<K, V>, T, PartitionState<K, V>> recordEmitter) {
-		super(futureNotifier, elementsQueue, splitFetcherSupplier, recordEmitter);
+			RecordEmitter<ConsumerRecord<K, V>, T, PartitionState<K, V>> recordEmitter,
+			Configuration config) {
+		super(futureNotifier, elementsQueue, splitFetcherSupplier, recordEmitter, config);
 	}
-
 
 	@Override
 	protected void onSplitFinished(Collection<String> finishedSplitIds) {
