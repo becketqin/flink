@@ -20,6 +20,7 @@ package org.apache.flink.runtime.util;
 
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.io.InputSplit;
@@ -43,6 +44,7 @@ import org.apache.flink.runtime.filecache.FileCache;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
 import org.apache.flink.runtime.io.disk.iomanager.IOManagerAsync;
 import org.apache.flink.runtime.io.network.NettyShuffleEnvironmentBuilder;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManagerBuilder;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironment;
 import org.apache.flink.runtime.io.network.TaskEventDispatcher;
@@ -50,7 +52,6 @@ import org.apache.flink.runtime.taskexecutor.NoOpPartitionProducerStateChecker;
 import org.apache.flink.runtime.io.network.partition.NoOpResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.query.KvStateRegistry;
@@ -75,6 +76,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -249,10 +251,15 @@ public class JvmExitOnFatalErrorTest {
 			}
 		}
 
-		private static final class NoOpInputSplitProvider implements InputSplitProvider {
+		private static final class NoOpInputSplitProvider implements SourceCoordinatorDelegate {
 
 			@Override
 			public InputSplit getNextInputSplit(ClassLoader userCodeClassLoader) {
+				return null;
+			}
+
+			@Override
+			public CompletableFuture<Void> sendOperatorEvent(OperatorEvent event) {
 				return null;
 			}
 		}

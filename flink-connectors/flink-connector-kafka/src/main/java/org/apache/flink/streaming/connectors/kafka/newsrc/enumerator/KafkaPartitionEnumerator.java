@@ -76,7 +76,7 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 	}
 
 	@Override
-	public void updateAssignment() {
+	public void addReader(int subtaskId) {
 		if (!unassignedPartitions.isEmpty()) {
 			Map<Integer, List<KafkaPartition>> additionalAssignment = new HashMap<>();
 			for (KafkaPartition kp : unassignedPartitions) {

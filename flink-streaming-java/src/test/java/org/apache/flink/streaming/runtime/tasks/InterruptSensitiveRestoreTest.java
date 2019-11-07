@@ -48,7 +48,7 @@ import org.apache.flink.runtime.io.network.TaskEventDispatcher;
 import org.apache.flink.runtime.io.network.partition.NoOpResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.query.KvStateRegistry;
@@ -276,7 +276,7 @@ public class InterruptSensitiveRestoreTest {
 			new TaskEventDispatcher(),
 			taskStateManager,
 			mock(TaskManagerActions.class),
-			mock(InputSplitProvider.class),
+			mock(SourceCoordinatorDelegate.class),
 			mock(CheckpointResponder.class),
 			new TestGlobalAggregateManager(),
 			blobService,

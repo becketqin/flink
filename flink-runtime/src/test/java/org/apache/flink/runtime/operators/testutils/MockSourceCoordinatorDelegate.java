@@ -28,11 +28,10 @@ import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.core.fs.FileInputSplit;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.core.io.InputSplit;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 
 /**
- * The mock input split provider implements the {@link InputSplitProvider} interface to serve input splits to the test
+ * The mock input split provider implements the {@link SourceCoordinatorDelegate} interface to serve input splits to the test
  * jobs.
  * <p>
  * This class is thread-safe.

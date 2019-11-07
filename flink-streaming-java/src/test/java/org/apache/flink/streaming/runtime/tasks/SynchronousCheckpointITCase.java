@@ -46,7 +46,7 @@ import org.apache.flink.runtime.io.network.partition.NoOpResultPartitionConsumab
 import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
@@ -258,7 +258,7 @@ public class SynchronousCheckpointITCase {
 				new TaskEventDispatcher(),
 				new TestTaskStateManager(),
 				mock(TaskManagerActions.class),
-				mock(InputSplitProvider.class),
+				mock(SourceCoordinatorDelegate.class),
 				mock(CheckpointResponder.class),
 				new TestGlobalAggregateManager(),
 				blobService,

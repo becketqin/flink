@@ -39,7 +39,7 @@ import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.io.network.util.TestPooledBufferProvider;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.memory.MemoryManagerBuilder;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
@@ -78,7 +78,7 @@ public class StreamMockEnvironment implements Environment {
 
 	private final IOManager ioManager;
 
-	private final InputSplitProvider inputSplitProvider;
+	private final SourceCoordinatorDelegate sourceCoordinatorDelegate;
 
 	private final Configuration jobConfiguration;
 
@@ -118,7 +118,7 @@ public class StreamMockEnvironment implements Environment {
 		Configuration taskConfig,
 		ExecutionConfig executionConfig,
 		long memorySize,
-		MockSourceCoordinatorDelegate inputSplitProvider,
+		MockSourceCoordinatorDelegate sourceCoordinatorDelegate,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 		this(
@@ -128,7 +128,7 @@ public class StreamMockEnvironment implements Environment {
 			taskConfig,
 			executionConfig,
 			memorySize,
-			inputSplitProvider,
+				sourceCoordinatorDelegate,
 			bufferSize,
 			taskStateManager);
 	}
@@ -140,7 +140,7 @@ public class StreamMockEnvironment implements Environment {
 		Configuration taskConfig,
 		ExecutionConfig executionConfig,
 		long memorySize,
-		MockSourceCoordinatorDelegate inputSplitProvider,
+		MockSourceCoordinatorDelegate sourceCoordinatorDelegate,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 
@@ -162,7 +162,7 @@ public class StreamMockEnvironment implements Environment {
 		this.ioManager = new IOManagerAsync();
 		this.taskStateManager = Preconditions.checkNotNull(taskStateManager);
 		this.aggregateManager = new TestGlobalAggregateManager();
-		this.inputSplitProvider = inputSplitProvider;
+		this.sourceCoordinatorDelegate = sourceCoordinatorDelegate;
 		this.bufferSize = bufferSize;
 
 		this.executionConfig = executionConfig;
@@ -176,11 +176,12 @@ public class StreamMockEnvironment implements Environment {
 		Configuration jobConfig,
 		Configuration taskConfig,
 		long memorySize,
-		MockSourceCoordinatorDelegate inputSplitProvider,
+		MockSourceCoordinatorDelegate sourceCoordinatorDelegate,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 
-		this(jobConfig, taskConfig, new ExecutionConfig(), memorySize, inputSplitProvider, bufferSize, taskStateManager);
+		this(jobConfig, taskConfig, new ExecutionConfig(), memorySize,
+				sourceCoordinatorDelegate, bufferSize, taskStateManager);
 	}
 
 	public void addInputGate(InputGate gate) {
@@ -235,8 +236,8 @@ public class StreamMockEnvironment implements Environment {
 	}
 
 	@Override
-	public InputSplitProvider getSourceCoordinatorDelegate() {
-		return this.inputSplitProvider;
+	public SourceCoordinatorDelegate getSourceCoordinatorDelegate() {
+		return this.sourceCoordinatorDelegate;
 	}
 
 	@Override
