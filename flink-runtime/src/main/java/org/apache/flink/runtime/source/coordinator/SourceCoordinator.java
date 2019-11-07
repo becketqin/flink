@@ -122,7 +122,6 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 			} else if (event instanceof ReaderFailedEvent) {
 				handleReaderFailedEvent((ReaderFailedEvent) event);
 			}
-			enumerator.updateAssignment();
 		}, coordinatorExecutor);
 	}
 
@@ -169,6 +168,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	// --------------------- private methods -------------
 	private void handleReaderRegistrationEvent(ReaderRegistrationEvent event) {
 		context.registerSourceReader(event.subtaskId(), new ReaderInfo(event.subtaskId(), event.location()));
+		enumerator.addReader(event.subtaskId());
 	}
 
 	private void handleReaderFailedEvent(ReaderFailedEvent event) {

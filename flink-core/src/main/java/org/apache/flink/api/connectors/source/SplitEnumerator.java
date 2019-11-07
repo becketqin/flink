@@ -74,18 +74,11 @@ public interface SplitEnumerator<SplitT extends SourceSplit, CheckpointT> extend
 	void addSplitsBack(List<SplitT> splits, int subtaskId);
 
 	/**
-	 * A method that updates the split assignment synchronously.
-	 * A typical implementation would just assign the splits synchronously when this method is
-	 * invoked for the first time. And afterwards, only update the assignments when some event
-	 * happens, some examples of the events are:
-	 * 1. receiving a new SourceEvent from the SourceReader
-	 * 2. some splits are added back to the enumerator
-	 * 3. a new split is discovered (by an internal thread)
+	 * Add a new source reader with the given subtask ID.
 	 *
-	 * <p>When a new source reader is registered, this method will be invoked again to get a new
-	 * split assignment.
+	 * @param subtaskId the subtask ID of the new source reader.
 	 */
-	void updateAssignment();
+	void addReader(int subtaskId);
 
 	/**
 	 * Checkpoints the state of this split enumerator.

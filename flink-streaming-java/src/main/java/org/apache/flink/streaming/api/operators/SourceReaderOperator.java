@@ -125,4 +125,8 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 			throw new IllegalStateException("Received unexpected operator event " + event);
 		}
 	}
+
+	private void registerReader() {
+
+	}
 }

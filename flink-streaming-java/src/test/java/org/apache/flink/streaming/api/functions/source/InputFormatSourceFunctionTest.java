@@ -23,6 +23,7 @@ import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.io.RichInputFormat;
 import org.apache.flink.api.common.io.statistics.BaseStatistics;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
@@ -31,6 +32,7 @@ import org.apache.flink.metrics.groups.UnregisteredMetricsGroup;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
@@ -43,6 +45,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Tests for {@link InputFormatSourceFunction}.
@@ -281,7 +284,7 @@ public class InputFormatSourceFunctionTest {
 		}
 
 		@Override
-		public InputSplitProvider getSourceCoordinatorDelegate() {
+		public SourceCoordinatorDelegate getSourceCoordinatorDelegate() {
 			try {
 				this.inputSplits = format.createInputSplits(noOfSplits);
 				Assert.assertTrue(inputSplits.length == noOfSplits);
@@ -289,7 +292,12 @@ public class InputFormatSourceFunctionTest {
 				e.printStackTrace();
 			}
 
-			return new InputSplitProvider() {
+			return new SourceCoordinatorDelegate() {
+				@Override
+				public CompletableFuture<Void> sendOperatorEvent(OperatorEvent event) {
+					return CompletableFuture.completedFuture(null);
+				}
+
 				@Override
 				public InputSplit getNextInputSplit(ClassLoader userCodeClassLoader) {
 					if (nextSplit < inputSplits.length) {

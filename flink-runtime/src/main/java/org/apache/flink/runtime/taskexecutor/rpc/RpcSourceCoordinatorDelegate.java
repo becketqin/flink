@@ -50,7 +50,6 @@ public class RpcSourceCoordinatorDelegate implements InputSplitProvider, SourceC
 		this.timeout = Preconditions.checkNotNull(timeout);
 	}
 
-
 	@Override
 	public InputSplit getNextInputSplit(ClassLoader userCodeClassLoader) throws InputSplitProviderException {
 		Preconditions.checkNotNull(userCodeClassLoader);
