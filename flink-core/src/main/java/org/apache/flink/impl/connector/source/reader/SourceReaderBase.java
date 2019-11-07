@@ -100,7 +100,7 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Status pollNext(SourceOutput<T> sourceOutput) {
+	public Status pollNext(SourceOutput<T> sourceOutput) throws Exception {
 		splitFetcherManager.checkErrors();
 		// poll from the queue if the last element was successfully handled. Otherwise
 		// just pass the last element again.

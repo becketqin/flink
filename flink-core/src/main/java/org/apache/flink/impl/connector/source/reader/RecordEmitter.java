@@ -44,7 +44,7 @@ public interface RecordEmitter<E, T, SplitStateT> extends Configurable {
 	 * @param output
 	 * @param splitState
 	 */
-	void emitRecord(E element, SourceOutput<T> output, SplitStateT splitState);
+	void emitRecord(E element, SourceOutput<T> output, SplitStateT splitState) throws Exception;
 
 	@Override
 	default void configure(Configuration config) {

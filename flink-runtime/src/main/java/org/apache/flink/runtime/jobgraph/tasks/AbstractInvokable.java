@@ -19,6 +19,7 @@
 package org.apache.flink.runtime.jobgraph.tasks;
 
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointMetrics;
@@ -27,6 +28,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.taskmanager.Task;
 
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -267,5 +269,9 @@ public abstract class AbstractInvokable {
 	 */
 	public Future<Void> notifyCheckpointCompleteAsync(long checkpointId) {
 		throw new UnsupportedOperationException(String.format("notifyCheckpointCompleteAsync not supported by %s", this.getClass().getName()));
+	}
+
+	public CompletableFuture<Void> handleOperatorEventAsync(OperatorEvent event) {
+		throw new UnsupportedOperationException(String.format("handleOperatorEventAsync not supported by %s", this.getClass().getName()));
 	}
 }

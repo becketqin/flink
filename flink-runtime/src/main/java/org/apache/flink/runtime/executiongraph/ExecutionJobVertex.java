@@ -370,7 +370,7 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		return splitAssigner;
 	}
 
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(int taskId, OperatorEvent event) {
+	public CompletableFuture<Void> handleOperatorEvent(int taskId, OperatorEvent event) {
 		if (sourceCoordinator == null) {
 			throw new IllegalStateException("Cannot find SourceCoordinator to handle the operator event");
 		}

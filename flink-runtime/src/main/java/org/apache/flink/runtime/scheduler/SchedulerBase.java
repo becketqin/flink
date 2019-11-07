@@ -494,7 +494,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 	}
 
 	@Override
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(
+	public CompletableFuture<Void> handleOperatorEvent(
 			OperatorEvent event,
 			JobVertexID vertexID,
 			ExecutionAttemptID executionAttempt) {

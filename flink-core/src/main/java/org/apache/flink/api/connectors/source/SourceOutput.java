@@ -28,7 +28,7 @@ public interface SourceOutput<T> {
 	 *
 	 * @param element
 	 */
-	void collect(T element);
+	void collect(T element) throws Exception;
 
 	/**
 	 * Emit an element with timestamp.
@@ -36,5 +36,5 @@ public interface SourceOutput<T> {
 	 * @param element
 	 * @param timestamp
 	 */
-	void collect(T element, Long timestamp);
+	void collect(T element, Long timestamp) throws Exception;
 }

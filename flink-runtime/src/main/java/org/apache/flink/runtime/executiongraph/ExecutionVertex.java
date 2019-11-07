@@ -273,7 +273,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 	}
 
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event) {
+	public CompletableFuture<Void> handleOperatorEvent(OperatorEvent event) {
 		final int taskId = getParallelSubtaskIndex();
 		return jobVertex.handleOperatorEvent(taskId, event);
 	}

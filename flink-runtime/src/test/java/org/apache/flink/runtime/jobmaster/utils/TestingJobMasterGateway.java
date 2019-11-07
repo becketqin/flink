@@ -226,9 +226,9 @@ public class TestingJobMasterGateway implements JobMasterGateway {
 	}
 
 	@Override
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event,
-																	  JobVertexID vertexID,
-																	  ExecutionAttemptID executionAttempt) {
+	public CompletableFuture<Void> handleOperatorEvent(OperatorEvent event,
+													   JobVertexID vertexID,
+													   ExecutionAttemptID executionAttempt) {
 		return null;
 	}
 

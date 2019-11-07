@@ -23,6 +23,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.TaskInfo;
 import org.apache.flink.api.common.cache.DistributedCache;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.fs.FileSystemSafetyNet;
@@ -90,6 +91,7 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -1172,6 +1174,25 @@ public class Task implements Runnable, TaskActions, PartitionProducerStateProvid
 					failExternally(new RuntimeException(
 						"Error while confirming checkpoint",
 						t));
+				}
+			}
+		}
+		else {
+			LOG.debug("Ignoring checkpoint commit notification for non-running task {}.", taskNameWithSubtask);
+		}
+	}
+
+	public void handleOperatorEvent(OperatorEvent event) {
+		final AbstractInvokable invokable = this.invokable;
+
+		if (executionState == ExecutionState.RUNNING && invokable != null) {
+			try {
+				invokable.handleOperatorEventAsync(event).get();
+			}
+			catch (Throwable t) {
+				if (getExecutionState() == ExecutionState.RUNNING) {
+					// fail task if checkpoint confirmation failed.
+					failExternally(new RuntimeException("Error while handling operator event " + event, t));
 				}
 			}
 		}

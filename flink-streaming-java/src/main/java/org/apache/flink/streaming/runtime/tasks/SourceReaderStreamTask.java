@@ -19,6 +19,9 @@
 package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.connectors.source.SourceOutput;
+import org.apache.flink.api.connectors.source.SourceSplit;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.streaming.api.operators.Output;
 import org.apache.flink.streaming.api.operators.SourceReaderOperator;
@@ -32,13 +35,16 @@ import org.apache.flink.streaming.runtime.streamrecord.LatencyMarker;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatusMaintainer;
 
+import java.util.concurrent.CompletableFuture;
+
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * A subclass of {@link StreamTask} for executing the {@link SourceReaderOperator}.
  */
 @Internal
-public class SourceReaderStreamTask<T> extends StreamTask<T, SourceReaderOperator<T>> {
+public class SourceReaderStreamTask<T, SplitT extends SourceSplit>
+		extends StreamTask<T, SourceReaderOperator<T, SplitT>> {
 
 	public SourceReaderStreamTask(Environment env) {
 		super(env);
@@ -59,11 +65,18 @@ public class SourceReaderStreamTask<T> extends StreamTask<T, SourceReaderOperato
 			operatorChain);
 	}
 
+	@Override
+	public CompletableFuture<Void> handleOperatorEventAsync(OperatorEvent event) {
+		return CompletableFuture.runAsync(
+				() -> headOperator.handleOperatorEvents(event),
+				mailboxProcessor.getMainMailboxExecutor().asExecutor("Handling operator event %s", event));
+	}
+
 	/**
 	 * Implementation of {@link DataOutput} that wraps a specific {@link Output} to emit
 	 * stream elements for {@link SourceReaderOperator}.
 	 */
-	private static class StreamTaskSourceOutput<T> extends AbstractDataOutput<T> {
+	private static class StreamTaskSourceOutput<T> extends AbstractDataOutput<T> implements SourceOutput<T> {
 
 		private final Output<StreamRecord<T>> output;
 
@@ -94,6 +107,21 @@ public class SourceReaderStreamTask<T> extends StreamTask<T, SourceReaderOperato
 		public void emitWatermark(Watermark watermark) {
 			synchronized (lock) {
 				output.emitWatermark(watermark);
+			}
+		}
+
+		@Override
+		public void collect(T element) {
+			synchronized (lock) {
+				output.collect(new StreamRecord<>(element));
+			}
+		}
+
+		@Override
+		public void collect(T element, Long timestamp) {
+			synchronized (lock) {
+				output.collect(new StreamRecord<>(element));
+				output.emitWatermark(new Watermark(timestamp));
 			}
 		}
 	}

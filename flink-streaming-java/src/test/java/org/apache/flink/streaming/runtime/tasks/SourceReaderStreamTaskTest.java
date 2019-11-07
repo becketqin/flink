@@ -22,6 +22,7 @@ import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
+import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.checkpoint.CheckpointMetaData;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
@@ -146,7 +147,7 @@ public class SourceReaderStreamTaskTest {
 	/**
 	 * A simple {@link SourceReaderOperator} implementation for emitting limited int type records.
 	 */
-	private static class TestingIntegerSourceReaderOperator extends SourceReaderOperator<Integer> {
+	private static class TestingIntegerSourceReaderOperator extends SourceReaderOperator<Integer, FixedSourceSplit> {
 		private static final long serialVersionUID = 1L;
 
 		private final int numRecords;
@@ -157,8 +158,12 @@ public class SourceReaderStreamTaskTest {
 		private ListState<Integer> counterState;
 
 		TestingIntegerSourceReaderOperator(int numRecords) {
+			super(null, null);
 			this.numRecords = numRecords;
 		}
+
+		@Override
+		public void open() throws Exception {}
 
 		@Override
 		public InputStatus emitNext(DataOutput<Integer> output) throws Exception {
@@ -188,8 +193,6 @@ public class SourceReaderStreamTaskTest {
 
 		@Override
 		public void snapshotState(StateSnapshotContext context) throws Exception {
-			super.snapshotState(context);
-
 			counterState.clear();
 			counterState.add(counter);
 		}
@@ -204,6 +207,14 @@ public class SourceReaderStreamTaskTest {
 
 		@Override
 		public void close() {
+		}
+	}
+
+	private static class FixedSourceSplit implements SourceSplit {
+
+		@Override
+		public String splitId() {
+			return "Anything";
 		}
 	}
 }

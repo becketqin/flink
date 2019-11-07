@@ -401,7 +401,7 @@ public class JobMaster extends FencedRpcEndpoint<JobMasterId> implements JobMast
 	}
 
 	@Override
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(
+	public CompletableFuture<Void> handleOperatorEvent(
 			OperatorEvent event,
 			JobVertexID vertexID,
 			ExecutionAttemptID executionAttempt) {

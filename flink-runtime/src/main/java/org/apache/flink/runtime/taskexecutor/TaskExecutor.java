@@ -812,7 +812,18 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 	public CompletableFuture<Acknowledge> handleOperatorEvent(OperatorEvent event,
 															  ExecutionAttemptID executionAttemptID,
 															  JobID jobId) {
-		return null;
+		final Task task = taskSlotTable.getTask(executionAttemptID);
+
+		if (task != null) {
+			task.handleOperatorEvent(event);
+			return CompletableFuture.completedFuture(Acknowledge.get());
+		} else {
+			final String message = String.format("TaskManager received an operator event %s for unknown task %s.",
+					event, executionAttemptID);
+
+			log.debug(message);
+			return FutureUtils.completedExceptionally(new CheckpointException(message, CheckpointFailureReason.TASK_CHECKPOINT_FAILURE));
+		}
 	}
 
 	// ----------------------------------------------------------------------

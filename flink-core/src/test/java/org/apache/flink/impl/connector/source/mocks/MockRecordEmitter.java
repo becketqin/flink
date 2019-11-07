@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MockRecordEmitter implements RecordEmitter<int[], Integer, AtomicInteger> {
 	@Override
-	public void emitRecord(int[] record, SourceOutput<Integer> output, AtomicInteger splitState) {
+	public void emitRecord(int[] record, SourceOutput<Integer> output, AtomicInteger splitState) throws Exception {
 		// The value is the first element.
 		output.collect(record[0]);
 		// The state will be next index.

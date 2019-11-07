@@ -18,7 +18,26 @@
 package org.apache.flink.streaming.api.operators;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
+import org.apache.flink.api.connectors.source.Source;
+import org.apache.flink.api.connectors.source.SourceOutput;
+import org.apache.flink.api.connectors.source.SourceReader;
+import org.apache.flink.api.connectors.source.SourceSplit;
+import org.apache.flink.api.connectors.source.event.AddSplitEvent;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
+import org.apache.flink.api.connectors.source.event.SourceEvent;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.runtime.state.StateSnapshotContext;
+import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.io.InputStatus;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Base source operator only used for integrating the source reader which is proposed by FLIP-27. It implements
@@ -30,5 +49,64 @@ import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
  * @param <OUT> The output type of the operator
  */
 @Internal
-public abstract class SourceReaderOperator<OUT> extends AbstractStreamOperator<OUT> implements PushingAsyncDataInput<OUT> {
+public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
+		extends AbstractStreamOperator<OUT> implements PushingAsyncDataInput<OUT> {
+
+	private SourceReader<OUT, SplitT> sourceReader;
+	private SimpleVersionedSerializer<SplitT> splitSerializer;
+	private ListState<byte[]> readerState;
+
+	public SourceReaderOperator(SourceReader<OUT, SplitT> sourceReader,
+								SimpleVersionedSerializer<SplitT> splitSerializer) {
+		this.sourceReader = sourceReader;
+		this.splitSerializer = splitSerializer;
+	}
+
+	@Override
+	public void open() throws Exception {
+		this.readerState = getRuntimeContext().getListState(
+				new ListStateDescriptor<>("SourceReaderState", BytePrimitiveArraySerializer.INSTANCE));
+		sourceReader.start();
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public InputStatus emitNext(DataOutput<OUT> output) throws Exception {
+		switch (sourceReader.pollNext((SourceOutput<OUT>) output)) {
+			case AVAILABLE_NOW:
+				return InputStatus.MORE_AVAILABLE;
+			case AVAILABLE_LATER:
+				return InputStatus.NOTHING_AVAILABLE;
+			case FINISHED:
+				return InputStatus.END_OF_INPUT;
+			default:
+				throw new IllegalStateException("Should never reach here");
+		}
+	}
+
+	@Override
+	public void snapshotState(StateSnapshotContext context) throws Exception {
+		List<SplitT> splitStates = sourceReader.snapshotState();
+		List<byte[]> state = new ArrayList<>();
+		for (SplitT splitState : splitStates) {
+			state.add(splitSerializer.serialize(splitState));
+		}
+		readerState.update(state);
+	}
+
+	@Override
+	public CompletableFuture<?> isAvailable() {
+		return sourceReader.available();
+	}
+
+	@SuppressWarnings("unchecked")
+	public void handleOperatorEvents(OperatorEvent event) {
+		if (event instanceof AddSplitEvent) {
+			sourceReader.addSplits(((AddSplitEvent<SplitT>) event).splits());
+		} else if (event instanceof SourceEvent) {
+			sourceReader.handleSourceEvents((SourceEvent) event);
+		} else {
+			throw new IllegalStateException("Received unexpected operator event " + event);
+		}
+	}
 }

@@ -338,7 +338,7 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		return this.vertex.getNextInputSplit(host);
 	}
 
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event) {
+	public CompletableFuture<Void> handleOperatorEvent(OperatorEvent event) {
 		return this.vertex.handleOperatorEvent(event);
 	}
 

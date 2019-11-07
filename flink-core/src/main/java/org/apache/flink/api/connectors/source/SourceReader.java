@@ -19,10 +19,11 @@ package org.apache.flink.api.connectors.source;
 
 import org.apache.flink.api.connectors.source.event.SourceEvent;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public interface SourceReader<T, SplitT extends SourceSplit> extends AutoCloseable {
+public interface SourceReader<T, SplitT extends SourceSplit> extends Serializable, AutoCloseable {
 
 	/**
 	 * Start the reader;
@@ -41,7 +42,7 @@ public interface SourceReader<T, SplitT extends SourceSplit> extends AutoCloseab
 	 *
 	 * @return the {@link Status} of the SourceReader after the method invocation.
 	 */
-	Status pollNext(SourceOutput<T> sourceOutput);
+	Status pollNext(SourceOutput<T> sourceOutput) throws Exception;
 
 	/**
 	 * Checkpoint on the state of the source.

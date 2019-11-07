@@ -85,7 +85,7 @@ public interface SchedulerNG {
 
 	SerializedInputSplit requestNextInputSplit(JobVertexID vertexID, ExecutionAttemptID executionAttempt) throws IOException;
 
-	CompletableFuture<Optional<Exception>> handleOperatorEvent(OperatorEvent event, JobVertexID vertexID, ExecutionAttemptID executionAttempt);
+	CompletableFuture<Void> handleOperatorEvent(OperatorEvent event, JobVertexID vertexID, ExecutionAttemptID executionAttempt);
 
 	ExecutionState requestPartitionState(IntermediateDataSetID intermediateResultId, ResultPartitionID resultPartitionId) throws PartitionProducerDisposedException;
 

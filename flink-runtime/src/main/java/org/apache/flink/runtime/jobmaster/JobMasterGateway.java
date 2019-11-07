@@ -99,7 +99,7 @@ public interface JobMasterGateway extends
 	 * @param executionAttempt The execution attempt id.
 	 * @return An acknowledge message when the operator event has been successfully handled.
 	 */
-	CompletableFuture<Optional<Exception>> handleOperatorEvent(
+	CompletableFuture<Void> handleOperatorEvent(
 			final OperatorEvent event,
 			final JobVertexID vertexID,
 			final ExecutionAttemptID executionAttempt);

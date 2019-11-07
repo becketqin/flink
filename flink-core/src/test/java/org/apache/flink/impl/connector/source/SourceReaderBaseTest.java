@@ -47,7 +47,7 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
-	public void testExceptionInSplitReader() throws InterruptedException {
+	public void testExceptionInSplitReader() throws Exception {
 		expectedException.expect(RuntimeException.class);
 		expectedException.expectMessage("One or more fetchers have encountered exception");
 		final String errMsg = "Testing Exception";

@@ -95,14 +95,14 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	 * @return A future that will be completed with null if the snapshot is successfully taken, or
 	 * completed with an exception otherwise.
 	 */
-	public CompletableFuture<Optional<Exception>> snapshotState(long checkpointId) {
-		return CompletableFuture.supplyAsync((asSupplier(() -> {
+	public CompletableFuture<Void> snapshotState(long checkpointId) {
+		return CompletableFuture.runAsync(() -> {
 			try {
 				coordinatorState.update(toBytes(checkpointId));
 			} catch (Exception e) {
 				LOG.warn("Failed to take snapshot on the SourceCoordinator.");
 			}
-		})), coordinatorExecutor);
+		}, coordinatorExecutor);
 	}
 
 	/**
@@ -113,8 +113,8 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	 * @return A future that will be completed with null if the operator event  is successfully handled, or
 	 * completed with an exception otherwise.
 	 */
-	public CompletableFuture<Optional<Exception>> handleOperatorEvent(int subtaskId, OperatorEvent event) {
-		return CompletableFuture.supplyAsync(asSupplier(() -> {
+	public CompletableFuture<Void> handleOperatorEvent(int subtaskId, OperatorEvent event) {
+		return CompletableFuture.runAsync(() -> {
 			if (event instanceof SourceEvent) {
 				enumerator.handleSourceEvent(subtaskId, (SourceEvent) event);
 			} else if (event instanceof ReaderRegistrationEvent) {
@@ -123,7 +123,7 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 				handleReaderFailedEvent((ReaderFailedEvent) event);
 			}
 			enumerator.updateAssignment();
-		}), coordinatorExecutor);
+		}, coordinatorExecutor);
 	}
 
 	// --------------------- Serde -----------------------
@@ -174,16 +174,5 @@ public class SourceCoordinator<SplitT extends SourceSplit, CheckpointT> implemen
 	private void handleReaderFailedEvent(ReaderFailedEvent event) {
 		List<SplitT> splitsToAddBack = context.getAndRemoveUncheckpointedAssignment(event.subtaskId());
 		enumerator.addSplitsBack(splitsToAddBack, event.subtaskId());
-	}
-
-	private static Supplier<Optional<Exception>> asSupplier(Runnable runnable) {
-		return () -> {
-			try {
-				runnable.run();
-				return Optional.empty();
-			} catch (Exception e) {
-				return Optional.of(e);
-			}
-		};
 	}
 }

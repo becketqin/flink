@@ -48,7 +48,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	 * Simply test the reader reads all the splits fine.
 	 */
 	@Test
-	public void testRead() {
+	public void testRead() throws Exception {
 		SourceReader<Integer, SplitT> reader = createReader(Boundedness.BOUNDED);
 		reader.addSplits(getSplits(NUM_SPLITS, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED));
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
@@ -59,7 +59,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	}
 
 	@Test
-	public void testAddSplitToExistingFetcher() {
+	public void testAddSplitToExistingFetcher() throws Exception {
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
 		// Add a split to start the fetcher.
 		List<SplitT> splits = Collections.singletonList(getSplit(0, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED));
@@ -78,7 +78,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	}
 
 	@Test (timeout = 30000L)
-	public void testPollingFromEmptyQueue() {
+	public void testPollingFromEmptyQueue() throws Exception {
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
 		List<SplitT> splits = Collections.singletonList(getSplit(0, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED));
 		// Consumer all the records in the s;oit.
@@ -88,7 +88,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	}
 
 	@Test (timeout = 30000L)
-	public void testAvailableOnEmptyQueue() throws ExecutionException, InterruptedException {
+	public void testAvailableOnEmptyQueue() throws Exception {
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
 		List<SplitT> splits = Collections.singletonList(getSplit(0, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED));
 		// Consumer all the records in the split.
@@ -103,7 +103,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	}
 
 	@Test (timeout = 30000L)
-	public void testSnapshot() {
+	public void testSnapshot() throws Exception {
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
 		// Add a split to start the fetcher.
 		List<SplitT> splits = getSplits(NUM_SPLITS, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED);
@@ -131,7 +131,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 	private SourceReader<Integer, SplitT> consumeRecords(List<SplitT> splits,
 														 ValidatingSourceOutput output,
 														 int n,
-														 Boundedness boundedness) {
+														 Boundedness boundedness) throws Exception {
 		SourceReader<Integer, SplitT> reader = createReader(boundedness);
 		// Add splits to start the fetcher.
 		reader.addSplits(splits);
