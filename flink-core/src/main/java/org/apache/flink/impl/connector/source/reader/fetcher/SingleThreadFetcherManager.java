@@ -18,12 +18,14 @@
 package org.apache.flink.impl.connector.source.reader.fetcher;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.splitreader.SplitReader;
 import org.apache.flink.impl.connector.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.impl.connector.source.reader.synchronization.FutureNotifier;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -34,8 +36,9 @@ public class SingleThreadFetcherManager<E, SplitT extends SourceSplit>
 
 	public SingleThreadFetcherManager(FutureNotifier futureNotifier,
 									  FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
-									  Supplier<SplitReader<E, SplitT>> splitReaderSupplier) {
-		super(futureNotifier, elementsQueue, splitReaderSupplier);
+									  Supplier<SplitReader<E, SplitT>> splitReaderSupplier,
+									  Configuration config) {
+		super(futureNotifier, elementsQueue, splitReaderSupplier, config);
 	}
 
 	@Override

@@ -59,7 +59,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.IntermediateDataSetID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
@@ -91,7 +91,6 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
@@ -201,7 +200,7 @@ public class Task implements Runnable, TaskActions, PartitionProducerStateProvid
 	private final TaskManagerActions taskManagerActions;
 
 	/** Input split provider for the task. */
-	private final InputSplitProvider inputSplitProvider;
+	private final SourceCoordinatorDelegate sourceCoordinatorDelegate;
 
 	/** Checkpoint notifier used to communicate with the CheckpointCoordinator. */
 	private final CheckpointResponder checkpointResponder;
@@ -290,7 +289,7 @@ public class Task implements Runnable, TaskActions, PartitionProducerStateProvid
 		TaskEventDispatcher taskEventDispatcher,
 		TaskStateManager taskStateManager,
 		TaskManagerActions taskManagerActions,
-		InputSplitProvider inputSplitProvider,
+		SourceCoordinatorDelegate sourceCoordinatorDelegate,
 		CheckpointResponder checkpointResponder,
 		GlobalAggregateManager aggregateManager,
 		BlobCacheService blobService,
@@ -340,7 +339,7 @@ public class Task implements Runnable, TaskActions, PartitionProducerStateProvid
 		this.taskStateManager = Preconditions.checkNotNull(taskStateManager);
 		this.accumulatorRegistry = new AccumulatorRegistry(jobId, executionId);
 
-		this.inputSplitProvider = Preconditions.checkNotNull(inputSplitProvider);
+		this.sourceCoordinatorDelegate = Preconditions.checkNotNull(sourceCoordinatorDelegate);
 		this.checkpointResponder = Preconditions.checkNotNull(checkpointResponder);
 		this.aggregateManager = Preconditions.checkNotNull(aggregateManager);
 		this.taskManagerActions = checkNotNull(taskManagerActions);
@@ -657,7 +656,7 @@ public class Task implements Runnable, TaskActions, PartitionProducerStateProvid
 				aggregateManager,
 				accumulatorRegistry,
 				kvStateRegistry,
-				inputSplitProvider,
+				sourceCoordinatorDelegate,
 				distributedCacheEntries,
 				consumableNotifyingPartitionWriters,
 				inputGates,

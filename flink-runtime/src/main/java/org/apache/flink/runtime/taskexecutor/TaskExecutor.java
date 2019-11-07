@@ -57,7 +57,7 @@ import org.apache.flink.runtime.io.network.partition.PartitionTrackerEntry;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionID;
 import org.apache.flink.runtime.io.network.partition.TaskExecutorPartitionTracker;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.jobmaster.AllocatedSlotInfo;
 import org.apache.flink.runtime.jobmaster.AllocatedSlotReport;
 import org.apache.flink.runtime.jobmaster.JMTMRegistrationSuccess;
@@ -94,7 +94,7 @@ import org.apache.flink.runtime.taskexecutor.exceptions.TaskManagerException;
 import org.apache.flink.runtime.taskexecutor.exceptions.TaskSubmissionException;
 import org.apache.flink.runtime.taskexecutor.rpc.RpcCheckpointResponder;
 import org.apache.flink.runtime.taskexecutor.rpc.RpcGlobalAggregateManager;
-import org.apache.flink.runtime.taskexecutor.rpc.RpcInputSplitProvider;
+import org.apache.flink.runtime.taskexecutor.rpc.RpcSourceCoordinatorDelegate;
 import org.apache.flink.runtime.taskexecutor.rpc.RpcKvStateRegistryListener;
 import org.apache.flink.runtime.taskexecutor.rpc.RpcPartitionStateChecker;
 import org.apache.flink.runtime.taskexecutor.rpc.RpcResultPartitionConsumableNotifier;
@@ -534,7 +534,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 				tdd.getSubtaskIndex(),
 				tdd.getAttemptNumber());
 
-			InputSplitProvider inputSplitProvider = new RpcInputSplitProvider(
+			SourceCoordinatorDelegate sourceCoordinatorDelegate = new RpcSourceCoordinatorDelegate(
 				jobManagerConnection.getJobManagerGateway(),
 				taskInformation.getJobVertexId(),
 				tdd.getExecutionAttemptId(),
@@ -581,7 +581,7 @@ public class TaskExecutor extends RpcEndpoint implements TaskExecutorGateway {
 				taskExecutorServices.getTaskEventDispatcher(),
 				taskStateManager,
 				taskManagerActions,
-				inputSplitProvider,
+				sourceCoordinatorDelegate,
 				checkpointResponder,
 				aggregateManager,
 				blobCacheService,

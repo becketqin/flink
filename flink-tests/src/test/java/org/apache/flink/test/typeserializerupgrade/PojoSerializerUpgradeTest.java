@@ -36,7 +36,7 @@ import org.apache.flink.core.testutils.CommonTestUtils;
 import org.apache.flink.runtime.checkpoint.OperatorSubtaskState;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.runtime.state.StateBackend;
@@ -317,7 +317,7 @@ public class PojoSerializerUpgradeTest extends TestLogger {
 				new MockEnvironmentBuilder()
 					.setTaskName("test task")
 					.setMemorySize(32 * 1024)
-					.setInputSplitProvider(new MockInputSplitProvider())
+					.setInputSplitProvider(new MockSourceCoordinatorDelegate())
 					.setBufferSize(256)
 					.setTaskConfiguration(taskConfiguration)
 					.setExecutionConfig(executionConfig)

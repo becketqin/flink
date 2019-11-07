@@ -18,7 +18,6 @@
 package org.apache.flink.impl.connector.source.reader.splitreader;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
-import org.apache.flink.impl.connector.source.reader.Configurable;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 
 import java.util.Queue;
@@ -30,7 +29,7 @@ import java.util.Queue;
  * @param <E> the element type.
  * @param <SplitT> the split type.
  */
-public interface SplitReader<E, SplitT extends SourceSplit> extends Configurable {
+public interface SplitReader<E, SplitT extends SourceSplit> {
 
 	/**
 	 * Fetch elements into the blocking queue for the given splits. The fetch call could be blocking

@@ -347,7 +347,7 @@ public class DataSourceTask<OT> extends AbstractInvokable {
 	
 	private Iterator<InputSplit> getInputSplits() {
 
-		final InputSplitProvider provider = getEnvironment().getInputSplitProvider();
+		final InputSplitProvider provider = getEnvironment().getSourceCoordinatorDelegate();
 
 		return new Iterator<InputSplit>() {
 

@@ -42,11 +42,10 @@ import org.apache.flink.runtime.io.network.partition.NoOpResultPartitionConsumab
 import org.apache.flink.runtime.io.network.partition.ResultPartitionConsumableNotifier;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
-import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.memory.MemoryManagerBuilder;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironment;
 import org.apache.flink.runtime.state.TestTaskStateManager;
@@ -196,7 +195,7 @@ public final class TestTaskBuilder {
 			new TaskEventDispatcher(),
 			new TestTaskStateManager(),
 			taskManagerActions,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			new TestCheckpointResponder(),
 			new TestGlobalAggregateManager(),
 			blobCacheService,

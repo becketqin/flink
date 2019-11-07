@@ -66,7 +66,7 @@ import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.operators.testutils.DummyEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.shuffle.ShuffleEnvironment;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
@@ -746,7 +746,7 @@ public class StreamTaskTest extends TestLogger {
 				new MockEnvironmentBuilder()
 					.setTaskName("Test Task")
 					.setMemorySize(32L * 1024L)
-					.setInputSplitProvider(new MockInputSplitProvider())
+					.setInputSplitProvider(new MockSourceCoordinatorDelegate())
 					.setBufferSize(1)
 					.setTaskConfiguration(taskConfiguration)
 					.build()) {

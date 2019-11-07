@@ -48,7 +48,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <SplitStateT> the mutable type of split state.
  */
 public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitStateT>
-	implements SourceReader<T, SplitT>, Configurable {
+		implements SourceReader<T, SplitT> {
 	private static final Logger LOG = LoggerFactory.getLogger(SourceReaderBase.class);
 
 	/** A future notifier to notify when this reader requires attention. */
@@ -67,10 +67,13 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 	protected final SplitFetcherManager<E, SplitT> splitFetcherManager;
 
 	/** The configuration for the reader. */
-	protected SourceReaderOptions options;
+	protected final SourceReaderOptions options;
 
 	/** The raw configurations that may be used by subclasses. */
-	protected Configuration configuration;
+	protected final Configuration config;
+
+	/** The context of this source reader. */
+	protected SourceReaderContext context;
 
 	/** The last element to ensure it is fully handled. */
 	private SplitsRecordIterator<E> splitIter;
@@ -79,23 +82,21 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 			FutureNotifier futureNotifier,
 			FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
 			SplitFetcherManager<E, SplitT> splitFetcherManager,
-			RecordEmitter<E, T, SplitStateT> recordEmitter) {
+			RecordEmitter<E, T, SplitStateT> recordEmitter,
+			Configuration config) {
 		this.futureNotifier = futureNotifier;
 		this.elementsQueue = elementsQueue;
 		this.splitFetcherManager = splitFetcherManager;
 		this.recordEmitter = recordEmitter;
 		this.splitStates = new HashMap<>();
 		this.splitIter = null;
-	}
-
-	@Override
-	public void configure(Configuration config) {
 		this.options = new SourceReaderOptions(config);
+		this.config = config;
 	}
 
 	@Override
 	public void start() {
-		// Do nothing yet because we do not have any assigned splits.
+
 	}
 
 	@Override
@@ -136,13 +137,12 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 	}
 
 	@Override
-	public CompletableFuture<?> available() {
+	public CompletableFuture<Void> isAvailable() {
 		// The order matters here. We first get the future. After this point, if the queue
 		// is empty or there is no error in the split fetcher manager, we can ensure that
 		// the future will be completed by the fetcher once it put an element into the element queue,
 		// or it will be completed when an error occurs.
-		//
-		CompletableFuture<Object> future = futureNotifier.future();
+		CompletableFuture<Void> future = futureNotifier.future();
 		splitFetcherManager.checkErrors();
 		if (!elementsQueue.isEmpty()) {
 			// The fetcher got the new elements after the last poll, or their is a finished split.
@@ -174,6 +174,11 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 	}
 
 	@Override
+	public void setSourceReaderContext(SourceReaderContext context) {
+		this.context = context;
+	}
+
+	@Override
 	public void close() throws Exception {
 		splitFetcherManager.close(options.sourceReaderCloseTimeout);
 	}
@@ -198,7 +203,4 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
 	 * @return an immutable Split state.
 	 */
 	protected abstract SplitT toSplitType(String splitId, SplitStateT splitState);
-
-	// ------------------- private classes -----------------
-
 }

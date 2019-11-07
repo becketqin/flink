@@ -281,7 +281,7 @@ public class InputFormatSourceFunctionTest {
 		}
 
 		@Override
-		public InputSplitProvider getInputSplitProvider() {
+		public InputSplitProvider getSourceCoordinatorDelegate() {
 			try {
 				this.inputSplits = format.createInputSplits(noOfSplits);
 				Assert.assertTrue(inputSplits.length == noOfSplits);

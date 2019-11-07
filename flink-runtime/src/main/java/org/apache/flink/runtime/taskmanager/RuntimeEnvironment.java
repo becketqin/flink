@@ -35,6 +35,7 @@ import org.apache.flink.runtime.io.network.api.writer.ResultPartitionWriter;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
@@ -68,7 +69,7 @@ public class RuntimeEnvironment implements Environment {
 	private final BroadcastVariableManager bcVarManager;
 	private final TaskStateManager taskStateManager;
 	private final GlobalAggregateManager aggregateManager;
-	private final InputSplitProvider splitProvider;
+	private final SourceCoordinatorDelegate sourceCoordinatorDelegate;
 	
 	private final Map<String, Future<Path>> distCacheEntries;
 
@@ -106,7 +107,7 @@ public class RuntimeEnvironment implements Environment {
 			GlobalAggregateManager aggregateManager,
 			AccumulatorRegistry accumulatorRegistry,
 			TaskKvStateRegistry kvStateRegistry,
-			InputSplitProvider splitProvider,
+			SourceCoordinatorDelegate sourceCoordinatorDelegate,
 			Map<String, Future<Path>> distCacheEntries,
 			ResultPartitionWriter[] writers,
 			InputGate[] inputGates,
@@ -131,7 +132,7 @@ public class RuntimeEnvironment implements Environment {
 		this.aggregateManager = checkNotNull(aggregateManager);
 		this.accumulatorRegistry = checkNotNull(accumulatorRegistry);
 		this.kvStateRegistry = checkNotNull(kvStateRegistry);
-		this.splitProvider = checkNotNull(splitProvider);
+		this.sourceCoordinatorDelegate = checkNotNull(sourceCoordinatorDelegate);
 		this.distCacheEntries = checkNotNull(distCacheEntries);
 		this.writers = checkNotNull(writers);
 		this.inputGates = checkNotNull(inputGates);
@@ -230,8 +231,8 @@ public class RuntimeEnvironment implements Environment {
 	}
 
 	@Override
-	public InputSplitProvider getInputSplitProvider() {
-		return splitProvider;
+	public SourceCoordinatorDelegate getSourceCoordinatorDelegate() {
+		return sourceCoordinatorDelegate;
 	}
 
 	@Override

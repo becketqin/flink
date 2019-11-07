@@ -31,7 +31,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -94,7 +93,7 @@ public abstract class SourceReaderTest<SplitT extends SourceSplit> {
 		// Consumer all the records in the split.
 		SourceReader<Integer, SplitT> reader = consumeRecords(splits, output, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED);
 
-		CompletableFuture<?> future = reader.available();
+		CompletableFuture<?> future = reader.isAvailable();
 		assertFalse("There should be no records ready for poll.", future.isDone());
 		// Add a split to the reader so there are more records to be read.
 		reader.addSplits(Collections.singletonList(getSplit(1, NUM_RECORDS_PER_SPLIT, Boundedness.BOUNDED)));

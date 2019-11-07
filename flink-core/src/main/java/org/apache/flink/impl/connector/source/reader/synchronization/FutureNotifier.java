@@ -24,9 +24,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * A class facilitating the asynchronous communication among threads.
  */
 public class FutureNotifier {
-	private static final Object OBJ = new Object();
 	/** A future reference. */
-	private final AtomicReference<CompletableFuture<Object>> futureRef;
+	private final AtomicReference<CompletableFuture<Void>> futureRef;
 
 	public FutureNotifier() {
 		this.futureRef = new AtomicReference<>(null);
@@ -39,7 +38,7 @@ public class FutureNotifier {
 	 *
 	 * @return a future that will be completed.
 	 */
-	public CompletableFuture<Object> future() {
+	public CompletableFuture<Void> future() {
 		futureRef.compareAndSet(null, new CompletableFuture<>());
 		return futureRef.get();
 	}
@@ -48,9 +47,9 @@ public class FutureNotifier {
 	 * Complete the future if there is one. This will release the thread that is waiting for data.
 	 */
 	public void notifyComplete() {
-		CompletableFuture<Object> future = futureRef.get();
+		CompletableFuture<Void> future = futureRef.get();
 		// If there are multiple threads trying to complete the future, only the first one succeeds.
-		if (future != null && future.complete(OBJ)) {
+		if (future != null && future.complete(null)) {
 			futureRef.compareAndSet(future, null);
 		}
 	}

@@ -38,7 +38,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.io.network.partition.consumer.IteratorWrappingTestSingleInputGate;
 import org.apache.flink.runtime.io.network.util.TestPooledBufferProvider;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.memory.MemoryManagerBuilder;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
@@ -80,7 +80,7 @@ public class MockEnvironment implements Environment, AutoCloseable {
 
 	private final GlobalAggregateManager aggregateManager;
 
-	private final InputSplitProvider inputSplitProvider;
+	private final SourceCoordinatorDelegate sourceCoordinatorDelegate;
 
 	private final Configuration jobConfiguration;
 
@@ -123,7 +123,7 @@ public class MockEnvironment implements Environment, AutoCloseable {
 		JobVertexID jobVertexID,
 		String taskName,
 		long memorySize,
-		MockInputSplitProvider inputSplitProvider,
+		MockSourceCoordinatorDelegate sourceCoordinatorDelegate,
 		int bufferSize,
 		Configuration taskConfiguration,
 		ExecutionConfig executionConfig,
@@ -150,7 +150,7 @@ public class MockEnvironment implements Environment, AutoCloseable {
 		this.taskManagerRuntimeInfo = taskManagerRuntimeInfo;
 
 		this.executionConfig = executionConfig;
-		this.inputSplitProvider = inputSplitProvider;
+		this.sourceCoordinatorDelegate = sourceCoordinatorDelegate;
 		this.bufferSize = bufferSize;
 
 		this.accumulatorRegistry = new AccumulatorRegistry(jobID, getExecutionId());
@@ -229,8 +229,8 @@ public class MockEnvironment implements Environment, AutoCloseable {
 	}
 
 	@Override
-	public InputSplitProvider getInputSplitProvider() {
-		return this.inputSplitProvider;
+	public SourceCoordinatorDelegate getSourceCoordinatorDelegate() {
+		return this.sourceCoordinatorDelegate;
 	}
 
 	@Override

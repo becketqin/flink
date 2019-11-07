@@ -33,17 +33,13 @@ public abstract class SingleThreadMultiplexSourceReaderBase<E, T, SplitT extends
 			FutureNotifier futureNotifier,
 			FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
 			Supplier<SplitReader<E, SplitT>> splitFetcherSupplier,
-			RecordEmitter<E, T, SplitStateT> recordEmitter) {
-		super(futureNotifier,
-			  elementsQueue,
-			  new SingleThreadFetcherManager<>(futureNotifier, elementsQueue, splitFetcherSupplier),
-			  recordEmitter);
-	}
-
-	@Override
-	public void configure(Configuration config) {
-		super.configure(config);
-		splitFetcherManager.configure(config);
-		recordEmitter.configure(config);
+			RecordEmitter<E, T, SplitStateT> recordEmitter,
+			Configuration config) {
+		super(
+				futureNotifier,
+				elementsQueue,
+				new SingleThreadFetcherManager<>(futureNotifier, elementsQueue, splitFetcherSupplier, config),
+				recordEmitter,
+				config);
 	}
 }

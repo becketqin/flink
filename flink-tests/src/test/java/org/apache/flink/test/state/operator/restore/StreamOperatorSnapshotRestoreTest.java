@@ -36,7 +36,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.KeyGroupStatePartitionStreamProvider;
 import org.apache.flink.runtime.state.KeyedStateCheckpointOutputStream;
@@ -192,7 +192,7 @@ public class StreamOperatorSnapshotRestoreTest extends TestLogger {
 			.setJobVertexID(jobVertexID)
 			.setTaskName("test")
 			.setMemorySize(1024L * 1024L)
-			.setInputSplitProvider(new MockInputSplitProvider())
+			.setInputSplitProvider(new MockSourceCoordinatorDelegate())
 			.setBufferSize(1024 * 1024)
 			.setTaskStateManager(new TestTaskStateManager(localRecoveryConfig))
 			.setMaxParallelism(MAX_PARALLELISM)

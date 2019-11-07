@@ -30,7 +30,7 @@ import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.checkpoint.JobManagerTaskRestore;
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.TestTaskStateManager;
@@ -135,7 +135,7 @@ public class StatefulOperatorChainedTaskTest {
 			testHarness.taskConfig,
 			testHarness.getExecutionConfig(),
 			testHarness.memorySize,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			testHarness.bufferSize,
 			testHarness.getTaskStateManager());
 

@@ -25,8 +25,8 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.metrics.Counter;
-import org.apache.flink.runtime.jobgraph.tasks.InputSplitProvider;
 import org.apache.flink.runtime.jobgraph.tasks.InputSplitProviderException;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 
 import java.util.Iterator;
@@ -44,7 +44,7 @@ public class InputFormatSourceFunction<OUT> extends RichParallelSourceFunction<O
 
 	private InputFormat<OUT, InputSplit> format;
 
-	private transient InputSplitProvider provider;
+	private transient SourceCoordinatorDelegate sourceCoordinatorDelegate;
 	private transient Iterator<InputSplit> splitIterator;
 
 	private volatile boolean isRunning = true;
@@ -65,7 +65,7 @@ public class InputFormatSourceFunction<OUT> extends RichParallelSourceFunction<O
 		}
 		format.configure(parameters);
 
-		provider = context.getInputSplitProvider();
+		sourceCoordinatorDelegate = context.getSourceCoordinatorDelegate();
 		serializer = typeInfo.createSerializer(getRuntimeContext().getExecutionConfig());
 		splitIterator = getInputSplits();
 		isRunning = splitIterator.hasNext();
@@ -152,7 +152,7 @@ public class InputFormatSourceFunction<OUT> extends RichParallelSourceFunction<O
 
 				final InputSplit split;
 				try {
-					split = provider.getNextInputSplit(getRuntimeContext().getUserCodeClassLoader());
+					split = sourceCoordinatorDelegate.getNextInputSplit(getRuntimeContext().getUserCodeClassLoader());
 				} catch (InputSplitProviderException e) {
 					throw new RuntimeException("Could not retrieve next input split.", e);
 				}

@@ -15,20 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.flink.impl.connector.source.reader;
+package org.apache.flink.runtime.jobgraph.tasks;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
- * An interface allowing a instantiate-then-configure pattern of pluggables. This class
- * should be in a more generic package and applied to all the pluggables in Flink. For now
- * we just keep it in the connector common for development purpose.
+ * An interface that sends the {@link OperatorEvent} to the {@link SourceCoordinator}.
+ * At this point it extends InputSplitProvider for backwards compatibility reason.
+ * The InputSplitProvider will be deprecated and will be removed in the future.
  */
-public interface Configurable {
+public interface SourceCoordinatorDelegate extends InputSplitProvider {
 
 	/**
-	 * Configure the implementation class with the given configurations.
-	 * @param config the configuration to use.
+	 * Send an operator event to the source coordinator.
+	 *
+	 * @param event The source event to send.
 	 */
-	void configure(Configuration config);
+	CompletableFuture<Void> sendOperatorEvent(OperatorEvent event);
 }

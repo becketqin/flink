@@ -19,7 +19,6 @@ package org.apache.flink.impl.connector.source.reader.fetcher;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.impl.connector.source.reader.Configurable;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.splitreader.SplitReader;
 import org.apache.flink.impl.connector.source.reader.SourceReaderBase;
@@ -45,7 +44,7 @@ import java.util.function.Supplier;
  * A class responsible for starting the {@link SplitFetcher} and manage the life cycles of them.
  * This class works with the {@link SourceReaderBase}.
  */
-public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> implements Configurable {
+public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> {
 	private static final Logger LOG = LoggerFactory.getLogger(SplitFetcherManager.class);
 
 	private final ThrowableCatchingRunnableWrapper runnableWrapper;
@@ -66,10 +65,10 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> impleme
 	protected final Map<Integer, SplitFetcher<E, SplitT>> fetchers;
 
 	/** An executor service with two threads. One for the fetcher and one for the future completing thread. */
-	private ExecutorService executors;
+	private final ExecutorService executors;
 
 	/** The configurations of this SplitFetcherManager and the SplitReaders. */
-	private Configuration config;
+	private final Configuration config;
 
 	/**
 	 * Create a split fetcher manager.
@@ -80,8 +79,10 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> impleme
 	 */
 	public SplitFetcherManager(FutureNotifier futureNotifier,
 							   FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
-							   Supplier<SplitReader<E, SplitT>> splitReaderFactory) {
+							   Supplier<SplitReader<E, SplitT>> splitReaderFactory,
+							   Configuration config) {
 		this.elementsQueue = elementsQueue;
+		this.config = config;
 		this.runnableWrapper = new ThrowableCatchingRunnableWrapper(new Consumer<Throwable>() {
 			@Override
 			public void accept(Throwable t) {
@@ -103,11 +104,6 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> impleme
 		this.executors = Executors.newCachedThreadPool(r -> new Thread(r, "SourceFetcher"));
 	}
 
-	@Override
-	public void configure(Configuration config) {
-		this.config = config;
-	}
-
 	public abstract void addSplits(List<SplitT> splitsToAdd);
 
 	protected void startFetcher(SplitFetcher<E, SplitT> fetcher) {
@@ -117,7 +113,6 @@ public abstract class SplitFetcherManager<E, SplitT extends SourceSplit> impleme
 	protected SplitFetcher<E, SplitT> createSplitFetcher() {
 		// Create SplitReader.
 		SplitReader<E, SplitT> splitReader = splitReaderFactory.get();
-		splitReader.configure(config);
 
 		int fetcherId = fetcherIdGenerator.getAndIncrement();
 		SplitFetcher<E, SplitT> splitFetcher = new SplitFetcher<>(

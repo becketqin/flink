@@ -44,7 +44,7 @@ import org.apache.flink.runtime.memory.MemoryManager;
 import org.apache.flink.runtime.memory.MemoryManagerBuilder;
 import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.query.KvStateRegistry;
 import org.apache.flink.runtime.query.TaskKvStateRegistry;
 import org.apache.flink.runtime.state.TaskStateManager;
@@ -118,7 +118,7 @@ public class StreamMockEnvironment implements Environment {
 		Configuration taskConfig,
 		ExecutionConfig executionConfig,
 		long memorySize,
-		MockInputSplitProvider inputSplitProvider,
+		MockSourceCoordinatorDelegate inputSplitProvider,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 		this(
@@ -140,7 +140,7 @@ public class StreamMockEnvironment implements Environment {
 		Configuration taskConfig,
 		ExecutionConfig executionConfig,
 		long memorySize,
-		MockInputSplitProvider inputSplitProvider,
+		MockSourceCoordinatorDelegate inputSplitProvider,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 
@@ -176,7 +176,7 @@ public class StreamMockEnvironment implements Environment {
 		Configuration jobConfig,
 		Configuration taskConfig,
 		long memorySize,
-		MockInputSplitProvider inputSplitProvider,
+		MockSourceCoordinatorDelegate inputSplitProvider,
 		int bufferSize,
 		TaskStateManager taskStateManager) {
 
@@ -235,7 +235,7 @@ public class StreamMockEnvironment implements Environment {
 	}
 
 	@Override
-	public InputSplitProvider getInputSplitProvider() {
+	public InputSplitProvider getSourceCoordinatorDelegate() {
 		return this.inputSplitProvider;
 	}
 

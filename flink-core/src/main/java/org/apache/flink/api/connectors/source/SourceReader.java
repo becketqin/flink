@@ -18,6 +18,7 @@
 package org.apache.flink.api.connectors.source;
 
 import org.apache.flink.api.connectors.source.event.SourceEvent;
+import org.apache.flink.impl.connector.source.reader.SourceReaderContext;
 
 import java.io.Serializable;
 import java.util.List;
@@ -54,7 +55,7 @@ public interface SourceReader<T, SplitT extends SourceSplit> extends Serializabl
 	/**
 	 * @return a future that will be completed once there is a record available to poll.
 	 */
-	CompletableFuture<?> available();
+	CompletableFuture<Void> isAvailable();
 
 	/**
 	 * Adds a list of splits for this reader to read.
@@ -69,6 +70,13 @@ public interface SourceReader<T, SplitT extends SourceSplit> extends Serializabl
 	default void handleSourceEvents(SourceEvent sourceEvent) {
 		// Do nothing.
 	}
+
+	/**
+	 * Set the {@link SourceReaderContext context} for the source reader.
+	 *
+	 * @param context The context of the source reader.
+	 */
+	void setSourceReaderContext(SourceReaderContext context);
 
 	/**
 	 * The status of this reader.

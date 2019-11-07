@@ -39,7 +39,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.testutils.DummyEnvironment;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.AbstractKeyedStateBackend;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
 import org.apache.flink.runtime.state.CheckpointStreamFactory.CheckpointStateOutputStream;
@@ -207,7 +207,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 			testHarness.jobConfig,
 			testHarness.taskConfig,
 			testHarness.memorySize,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			testHarness.bufferSize,
 			taskStateManagerTestMock);
 
@@ -312,7 +312,7 @@ public class RocksDBAsyncSnapshotTest extends TestLogger {
 				testHarness.jobConfig,
 				testHarness.taskConfig,
 				testHarness.memorySize,
-				new MockInputSplitProvider(),
+				new MockSourceCoordinatorDelegate(),
 				testHarness.bufferSize,
 				taskStateManagerTestMock);
 

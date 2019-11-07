@@ -17,7 +17,6 @@
 
 package org.apache.flink.impl.connector.source.mocks;
 
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.impl.connector.source.reader.RecordsBySplits;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.splitreader.SplitReader;
@@ -84,11 +83,6 @@ public class MockSplitReader implements SplitReader<int[], MockSplit> {
 		if (blockingFetch) {
 			runningThread.interrupt();
 		}
-	}
-
-	@Override
-	public void configure(Configuration config) {
-
 	}
 
 	private RecordsBySplits<int[]> getRecords() throws InterruptedException {

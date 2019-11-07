@@ -17,6 +17,7 @@
 
 package org.apache.flink.api.connectors.source;
 
+import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.connectors.source.event.SourceEvent;
 
 import java.io.IOException;

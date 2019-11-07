@@ -20,6 +20,7 @@ package org.apache.flink.streaming.runtime.tasks;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connectors.source.SourceOutput;
+import org.apache.flink.api.connectors.source.SourceReader;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.execution.Environment;
@@ -52,6 +53,7 @@ public class SourceReaderStreamTask<T, SplitT extends SourceSplit>
 
 	@Override
 	public void init() {
+		headOperator.setSourceCoordinatorDelegate(getEnvironment().getSourceCoordinatorDelegate());
 		StreamTaskInput<T> input = new StreamTaskSourceInput<>(headOperator);
 		DataOutput<T> output = new StreamTaskSourceOutput<>(
 			operatorChain.getChainEntryPoint(),
@@ -75,6 +77,9 @@ public class SourceReaderStreamTask<T, SplitT extends SourceSplit>
 	/**
 	 * Implementation of {@link DataOutput} that wraps a specific {@link Output} to emit
 	 * stream elements for {@link SourceReaderOperator}.
+	 *
+	 * This class has to implement both {@link DataOutput} and {@link SourceOutput} because
+	 * {@link StreamOneInputProcessor} requires the former and the {@link SourceReader} requires the latter.
 	 */
 	private static class StreamTaskSourceOutput<T> extends AbstractDataOutput<T> implements SourceOutput<T> {
 
@@ -91,23 +96,17 @@ public class SourceReaderStreamTask<T, SplitT extends SourceSplit>
 
 		@Override
 		public void emitRecord(StreamRecord<T> streamRecord) {
-			synchronized (lock) {
-				output.collect(streamRecord);
-			}
+			throw new UnsupportedOperationException("This method should never be called from source task.");
 		}
 
 		@Override
 		public void emitLatencyMarker(LatencyMarker latencyMarker) {
-			synchronized (lock) {
-				output.emitLatencyMarker(latencyMarker);
-			}
+			throw new UnsupportedOperationException("This method should never be called from source task.");
 		}
 
 		@Override
 		public void emitWatermark(Watermark watermark) {
-			synchronized (lock) {
-				output.emitWatermark(watermark);
-			}
+			throw new UnsupportedOperationException("This method should never be called from source task.");
 		}
 
 		@Override

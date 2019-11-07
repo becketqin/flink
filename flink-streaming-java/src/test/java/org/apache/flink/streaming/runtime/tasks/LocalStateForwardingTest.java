@@ -31,7 +31,7 @@ import org.apache.flink.runtime.concurrent.Executors;
 import org.apache.flink.runtime.executiongraph.ExecutionAttemptID;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.DoneFuture;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.LocalRecoveryConfig;
@@ -86,7 +86,7 @@ public class LocalStateForwardingTest extends TestLogger {
 			new Configuration(),
 			new ExecutionConfig(),
 			1024 * 1024,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			0,
 			taskStateManager);
 

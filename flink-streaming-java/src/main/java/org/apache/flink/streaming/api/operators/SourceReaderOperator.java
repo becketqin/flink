@@ -21,7 +21,6 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
-import org.apache.flink.api.connectors.source.Source;
 import org.apache.flink.api.connectors.source.SourceOutput;
 import org.apache.flink.api.connectors.source.SourceReader;
 import org.apache.flink.api.connectors.source.SourceSplit;
@@ -29,11 +28,12 @@ import org.apache.flink.api.connectors.source.event.AddSplitEvent;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.api.connectors.source.event.SourceEvent;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.impl.connector.source.reader.SourceReaderContext;
+import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.StateSnapshotContext;
-import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.io.InputStatus;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
-import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +55,7 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 	private SourceReader<OUT, SplitT> sourceReader;
 	private SimpleVersionedSerializer<SplitT> splitSerializer;
 	private ListState<byte[]> readerState;
+	private SourceCoordinatorDelegate sourceCoordinatorDelegate;
 
 	public SourceReaderOperator(SourceReader<OUT, SplitT> sourceReader,
 								SimpleVersionedSerializer<SplitT> splitSerializer) {
@@ -64,6 +65,17 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 
 	@Override
 	public void open() throws Exception {
+		sourceReader.setSourceReaderContext(new SourceReaderContext() {
+			@Override
+			public MetricGroup getMetricGroup() {
+				return getRuntimeContext().getMetricGroup();
+			}
+
+			@Override
+			public CompletableFuture<Void> sendSourceEvent(SourceEvent event) {
+				return sourceCoordinatorDelegate.sendOperatorEvent(event);
+			}
+		});
 		this.readerState = getRuntimeContext().getListState(
 				new ListStateDescriptor<>("SourceReaderState", BytePrimitiveArraySerializer.INSTANCE));
 		sourceReader.start();
@@ -96,7 +108,11 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 
 	@Override
 	public CompletableFuture<?> isAvailable() {
-		return sourceReader.available();
+		return sourceReader.isAvailable();
+	}
+
+	public void setSourceCoordinatorDelegate(SourceCoordinatorDelegate sourceCoordinatorDelegate) {
+		this.sourceCoordinatorDelegate = sourceCoordinatorDelegate;
 	}
 
 	@SuppressWarnings("unchecked")

@@ -32,7 +32,7 @@ import org.apache.flink.runtime.checkpoint.StateAssignmentOperation;
 import org.apache.flink.runtime.checkpoint.TaskStateSnapshot;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.OperatorInstanceID;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.runtime.state.TestTaskStateManager;
@@ -236,7 +236,7 @@ public class RestoreStreamTaskTest extends TestLogger {
 			testHarness.taskConfig,
 			testHarness.executionConfig,
 			testHarness.memorySize,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			testHarness.bufferSize,
 			testHarness.taskStateManager);
 

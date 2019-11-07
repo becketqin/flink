@@ -72,13 +72,9 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 
 					@Override
 					public void wakeUp() {}
+				},
+				getConfig(Boundedness.BOUNDED));
 
-					@Override
-					public void configure(Configuration config) {}
-				});
-
-
-		reader.configure(getConfig(Boundedness.BOUNDED));
 		ValidatingSourceOutput output = new ValidatingSourceOutput();
 		reader.addSplits(Collections.singletonList(getSplit(0, NUM_RECORDS_PER_SPLIT, Boundedness.UNBOUNDED)));
 		// This is not a real infinite loop, it is supposed to throw exception after two polls.
@@ -98,13 +94,11 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 				new FutureCompletingBlockingQueue<>(futureNotifier);
 		MockSplitReader mockSplitReader =
 				new MockSplitReader(2, true, true);
-		MockSourceReader reader = new MockSourceReader(
+		return new MockSourceReader(
 				futureNotifier,
 				elementsQueue,
-				() -> mockSplitReader);
-		Configuration config = getConfig(boundedness);
-		reader.configure(config);
-		return reader;
+				() -> mockSplitReader,
+				getConfig(boundedness));
 	}
 
 	@Override

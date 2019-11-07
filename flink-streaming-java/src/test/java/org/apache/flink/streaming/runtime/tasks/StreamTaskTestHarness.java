@@ -31,7 +31,7 @@ import org.apache.flink.runtime.io.network.partition.consumer.StreamTestSingleIn
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.memory.MemoryManager;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.LocalRecoveryConfig;
 import org.apache.flink.runtime.state.LocalRecoveryDirectoryProviderImpl;
 import org.apache.flink.runtime.state.TestLocalRecoveryConfig;
@@ -214,7 +214,7 @@ public class StreamTaskTestHarness<OUT> {
 			taskConfig,
 			executionConfig,
 			memorySize,
-			new MockInputSplitProvider(),
+			new MockSourceCoordinatorDelegate(),
 			bufferSize,
 			taskStateManager);
 	}

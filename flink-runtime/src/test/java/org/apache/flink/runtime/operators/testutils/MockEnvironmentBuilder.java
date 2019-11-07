@@ -35,7 +35,7 @@ import org.apache.flink.runtime.util.TestingTaskManagerRuntimeInfo;
 public class MockEnvironmentBuilder {
 	private String taskName = "mock-task";
 	private long memorySize = 1024 * MemoryManager.DEFAULT_PAGE_SIZE;
-	private MockInputSplitProvider inputSplitProvider = null;
+	private MockSourceCoordinatorDelegate inputSplitProvider = null;
 	private int bufferSize = 16;
 	private TaskStateManager taskStateManager = new TestTaskStateManager();
 	private GlobalAggregateManager aggregateManager= new TestGlobalAggregateManager();
@@ -60,7 +60,7 @@ public class MockEnvironmentBuilder {
 		return this;
 	}
 
-	public MockEnvironmentBuilder setInputSplitProvider(MockInputSplitProvider inputSplitProvider) {
+	public MockEnvironmentBuilder setInputSplitProvider(MockSourceCoordinatorDelegate inputSplitProvider) {
 		this.inputSplitProvider = inputSplitProvider;
 		return this;
 	}

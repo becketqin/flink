@@ -19,13 +19,19 @@
 package org.apache.flink.runtime.jobgraph.tasks;
 
 import org.apache.flink.annotation.Public;
+import org.apache.flink.api.connectors.source.event.SourceEvent;
 import org.apache.flink.core.io.InputSplit;
+import org.apache.flink.impl.connector.source.reader.SourceReaderContext;
 
 /**
  * An input split provider can be successively queried to provide a series of {@link InputSplit} objects a
  * task is supposed to consume in the course of its execution.
+ *
+ * @deprecated This interface is deprecated since the introduction of FLIP-27. The subtasks should use
+ * {@link SourceReaderContext#sendSourceEvent(SourceEvent)} instead.
  */
 @Public
+@Deprecated
 public interface InputSplitProvider {
 
 	/**

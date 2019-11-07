@@ -34,7 +34,7 @@ import org.apache.flink.runtime.metrics.groups.TaskMetricGroup;
 import org.apache.flink.runtime.metrics.groups.UnregisteredMetricGroups;
 import org.apache.flink.runtime.metrics.util.InterceptingOperatorMetricGroup;
 import org.apache.flink.runtime.metrics.util.InterceptingTaskMetricGroup;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.TestTaskStateManager;
 import org.apache.flink.streaming.api.functions.co.CoMapFunction;
 import org.apache.flink.streaming.api.functions.co.RichCoMapFunction;
@@ -414,7 +414,7 @@ public class TwoInputStreamTaskTest {
 		};
 
 		final StreamMockEnvironment env = new StreamMockEnvironment(
-			testHarness.jobConfig, testHarness.taskConfig, testHarness.memorySize, new MockInputSplitProvider(), testHarness.bufferSize, new TestTaskStateManager()) {
+			testHarness.jobConfig, testHarness.taskConfig, testHarness.memorySize, new MockSourceCoordinatorDelegate(), testHarness.bufferSize, new TestTaskStateManager()) {
 			@Override
 			public TaskMetricGroup getMetricGroup() {
 				return taskMetricGroup;
@@ -500,7 +500,7 @@ public class TwoInputStreamTaskTest {
 		};
 
 		StreamMockEnvironment env = new StreamMockEnvironment(
-			testHarness.jobConfig, testHarness.taskConfig, testHarness.memorySize, new MockInputSplitProvider(), testHarness.bufferSize, new TestTaskStateManager()) {
+			testHarness.jobConfig, testHarness.taskConfig, testHarness.memorySize, new MockSourceCoordinatorDelegate(), testHarness.bufferSize, new TestTaskStateManager()) {
 			@Override
 			public TaskMetricGroup getMetricGroup() {
 				return taskMetricGroup;

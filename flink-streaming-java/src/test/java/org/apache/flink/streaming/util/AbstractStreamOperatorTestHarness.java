@@ -36,7 +36,7 @@ import org.apache.flink.runtime.execution.Environment;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.testutils.MockEnvironment;
 import org.apache.flink.runtime.operators.testutils.MockEnvironmentBuilder;
-import org.apache.flink.runtime.operators.testutils.MockInputSplitProvider;
+import org.apache.flink.runtime.operators.testutils.MockSourceCoordinatorDelegate;
 import org.apache.flink.runtime.state.CheckpointStorage;
 import org.apache.flink.runtime.state.CheckpointStorageLocationReference;
 import org.apache.flink.runtime.state.KeyGroupRange;
@@ -157,7 +157,7 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 				new MockEnvironmentBuilder()
 						.setTaskName("MockTask")
 						.setMemorySize(3 * 1024 * 1024)
-						.setInputSplitProvider(new MockInputSplitProvider())
+						.setInputSplitProvider(new MockSourceCoordinatorDelegate())
 						.setBufferSize(1024)
 						.setMaxParallelism(maxParallelism)
 						.setParallelism(parallelism)
@@ -198,7 +198,7 @@ public class AbstractStreamOperatorTestHarness<OUT> implements AutoCloseable {
 				new MockEnvironmentBuilder()
 						.setTaskName("MockTask")
 						.setMemorySize(3 * 1024 * 1024)
-						.setInputSplitProvider(new MockInputSplitProvider())
+						.setInputSplitProvider(new MockSourceCoordinatorDelegate())
 						.setBufferSize(1024)
 						.setMaxParallelism(maxParallelism)
 						.setParallelism(parallelism)
