@@ -32,12 +32,12 @@ import java.util.function.Supplier;
  * A mock SourceReader class;
  */
 public class MockSourceReader
-		extends SingleThreadMultiplexSourceReaderBase<int[], Integer, MockSplit, AtomicInteger> {
+		extends SingleThreadMultiplexSourceReaderBase<int[], Integer, MockSourceSplit, AtomicInteger> {
 
 
 	public MockSourceReader(FutureNotifier futureNotifier,
 							FutureCompletingBlockingQueue<RecordsWithSplitIds<int[]>> elementsQueue,
-							Supplier<SplitReader<int[], MockSplit>> splitFetcherSupplier,
+							Supplier<SplitReader<int[], MockSourceSplit>> splitFetcherSupplier,
 							Configuration config) {
 		super(futureNotifier, elementsQueue, splitFetcherSupplier, new MockRecordEmitter(), config);
 	}
@@ -48,12 +48,12 @@ public class MockSourceReader
 	}
 
 	@Override
-	protected AtomicInteger initializedState(MockSplit split) {
+	protected AtomicInteger initializedState(MockSourceSplit split) {
 		return new AtomicInteger(split.index());
 	}
 
 	@Override
-	protected MockSplit toSplitType(String splitId, AtomicInteger splitState) {
-		return new MockSplit(Integer.parseInt(splitId), splitState.get());
+	protected MockSourceSplit toSplitType(String splitId, AtomicInteger splitState) {
+		return new MockSourceSplit(Integer.parseInt(splitId), splitState.get());
 	}
 }

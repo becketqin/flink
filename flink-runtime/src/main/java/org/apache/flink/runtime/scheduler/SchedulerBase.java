@@ -66,7 +66,6 @@ import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.jobmanager.PartitionProducerDisposedException;
 import org.apache.flink.runtime.jobmaster.SerializedInputSplit;
 import org.apache.flink.runtime.jobmaster.slotpool.SlotProvider;
-import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.messages.FlinkJobNotFoundException;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
@@ -470,7 +469,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		mainThreadExecutor.assertRunningInMainThread();
 
 		final Execution execution = validateAndGetExecution(executionAttempt);
-		final ExecutionJobVertex vertex = validateAndGetExecutionJobVetex(vertexID);
+		final ExecutionJobVertex vertex = validateAndGetExecutionJobVertex(vertexID);
 
 		if (vertex.getSplitAssigner() == null) {
 			throw new IllegalStateException("No InputSplitAssigner for vertex ID " + vertexID);
@@ -500,8 +499,8 @@ public abstract class SchedulerBase implements SchedulerNG {
 			ExecutionAttemptID executionAttempt) {
 		mainThreadExecutor.assertRunningInMainThread();
 		final Execution execution = validateAndGetExecution(executionAttempt);
-		validateAndGetExecutionJobVetex(vertexID);
-		return execution.handleOperatorEvent(event);
+		ExecutionJobVertex vertex = validateAndGetExecutionJobVertex(vertexID);
+		return vertex.handleOperatorEvent(execution.getParallelSubtaskIndex(), event);
 	}
 
 	private Execution validateAndGetExecution(ExecutionAttemptID executionAttempt) {
@@ -518,7 +517,7 @@ public abstract class SchedulerBase implements SchedulerNG {
 		return execution;
 	}
 
-	private ExecutionJobVertex validateAndGetExecutionJobVetex(JobVertexID vertexID) {
+	private ExecutionJobVertex validateAndGetExecutionJobVertex(JobVertexID vertexID) {
 		final ExecutionJobVertex vertex = executionGraph.getJobVertex(vertexID);
 		if (vertex == null) {
 			throw new IllegalArgumentException("Cannot find execution vertex for vertex ID " + vertexID);

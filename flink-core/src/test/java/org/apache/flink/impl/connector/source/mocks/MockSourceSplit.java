@@ -19,27 +19,32 @@ package org.apache.flink.impl.connector.source.mocks;
 
 import org.apache.flink.api.connectors.source.SourceSplit;
 
+import java.io.Serializable;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
- * Simple testing splits.
+ * Simple Mock SourceSplit for unit test. The implementation of this class is just
+ * an in-memory queue. The values are integers and each value has an associated
+ * index which is its position in the queue over the entire life cycle of the split.
+ * For example, a value with index K means it is the K-th element that was
+ * polled out of the queue since the creation of this split.
  */
-public class MockSplit implements SourceSplit {
+public class MockSourceSplit implements SourceSplit, Serializable {
 	private final int id;
 	private final BlockingQueue<Integer> records;
 	private final int endIndex;
 	private int index;
 
-	public MockSplit(int id) {
+	public MockSourceSplit(int id) {
 		this(id, 0);
 	}
 
-	public MockSplit(int id, int startingIndex) {
+	public MockSourceSplit(int id, int startingIndex) {
 		this(id, startingIndex, Integer.MAX_VALUE);
 	}
 
-	public MockSplit(int id, int startingIndex, int endIndex) {
+	public MockSourceSplit(int id, int startingIndex, int endIndex) {
 		this.id = id;
 		this.endIndex = endIndex;
 		this.index = startingIndex;

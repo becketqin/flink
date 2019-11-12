@@ -29,6 +29,8 @@ import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.api.connectors.source.event.SourceEvent;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.executiongraph.ExecutionVertex;
+import org.apache.flink.runtime.state.CheckpointListener;
 
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -38,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
+import java.util.function.BiConsumer;
 
 /**
  * A context class for the {@link SourceCoordinator}. Compared with {@link SplitEnumeratorContext} this class
@@ -49,12 +51,15 @@ import java.util.function.BiFunction;
  */
 @Internal
 public class SourceCoordinatorContext<SplitT extends SourceSplit> implements SplitEnumeratorContext<SplitT> {
-	private ExecutorNotifier notifier;
+	private final ExecutorNotifier notifier;
+	private final ExecutionVertex[] subtasks;
 	private final Map<Integer, ReaderInfo> registeredReaders;
 	private final SplitAssignmentTracker<SplitT> assignmentTracker;
 
-	public SourceCoordinatorContext(ExecutorNotifier notifier) {
+	public SourceCoordinatorContext(ExecutorNotifier notifier,
+									ExecutionVertex[] subtasks) {
 		this.notifier = notifier;
+		this.subtasks = subtasks;
 		this.registeredReaders = new HashMap<>();
 		this.assignmentTracker = new SplitAssignmentTracker<>();
 	}
@@ -65,13 +70,13 @@ public class SourceCoordinatorContext<SplitT extends SourceSplit> implements Spl
 	}
 
 	@Override
-	public CompletableFuture<Boolean> sendEventToSourceReader(int subtaskId, SourceEvent event) {
-		return null;
+	public CompletableFuture<Void> sendEventToSourceReader(int subtaskId, SourceEvent event) {
+		return subtasks[subtaskId].handleOperatorEventFromCoordinator(event);
 	}
 
 	@Override
 	public int numSubtasks() {
-		return 0;
+		return subtasks.length;
 	}
 
 	@Override
@@ -97,24 +102,19 @@ public class SourceCoordinatorContext<SplitT extends SourceSplit> implements Spl
 	}
 
 	@Override
-	public void notifyNewAssignment() {
-		notifier.notifyReady();
-	}
-
-	@Override
-	public <T> void notifyNewAssignmentAsync(Callable<T> callable,
-									  BiFunction<T, Throwable, Boolean> handler,
-									  long initialDelay,
-									  long period) {
+	public <T> void assignSplitAsync(Callable<T> callable,
+									 BiConsumer<T, Throwable> handler,
+									 long initialDelay,
+									 long period) {
 		notifier.notifyReadyAsync(callable, handler, initialDelay, period);
 	}
 
 	@Override
-	public <T> void notifyNewAssignmentAsync(Callable<T> callable, BiFunction<T, Throwable, Boolean> handler) {
+	public <T> void assignSplitAsync(Callable<T> callable, BiConsumer<T, Throwable> handler) {
 		notifier.notifyReadyAsync(callable, handler);
 	}
 
-	// --------- Package private additional methods for the SourceCoordinator ------------
+	// --------- Package private additional methods for the DefaultSourceCoordinator ------------
 	/**
 	 * Access the state for the enumerator state.
 	 */
@@ -177,5 +177,9 @@ public class SourceCoordinatorContext<SplitT extends SourceSplit> implements Spl
 		Map<Integer, ReaderInfo> readers = (Map<Integer, ReaderInfo>) in.readObject();
 		registeredReaders.putAll(readers);
 		assignmentTracker.restoreState(splitSerializer, in);
+	}
+
+	void onCheckpointComplete(long checkpointId) {
+		assignmentTracker.onCheckpointComplete(checkpointId);
 	}
 }

@@ -28,6 +28,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 import org.apache.flink.runtime.executiongraph.failover.AdaptedRestartPipelinedRegionStrategyNG;
 import org.apache.flink.runtime.executiongraph.failover.FailoverStrategy;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.util.TestLogger;
@@ -36,6 +37,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.util.Collections;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.junit.Assert.assertEquals;
@@ -76,7 +78,9 @@ public class FailoverStrategyCheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator checkpointCoordinator = new CheckpointCoordinator(
 			new JobID(),
 			checkpointCoordinatorConfiguration,
-			new ExecutionVertex[] { executionVertex },
+			Collections.singletonMap(
+					DummySourceCoordinator.INSTANCE,
+					new ExecutionVertex[] { executionVertex }),
 			new ExecutionVertex[] { executionVertex },
 			new ExecutionVertex[] { executionVertex },
 			new StandaloneCheckpointIDCounter(),

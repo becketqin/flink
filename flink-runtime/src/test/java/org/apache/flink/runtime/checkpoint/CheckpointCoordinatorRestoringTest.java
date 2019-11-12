@@ -30,6 +30,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.ChainedStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupsStateHandle;
@@ -159,7 +160,9 @@ public class CheckpointCoordinatorRestoringTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			arrayExecutionVertices,
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						arrayExecutionVertices),
 			arrayExecutionVertices,
 			arrayExecutionVertices,
 			new StandaloneCheckpointIDCounter(),
@@ -293,7 +296,9 @@ public class CheckpointCoordinatorRestoringTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { stateful1, stateless1 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { stateful1, stateless1 }),
 				new ExecutionVertex[] { stateful1, stateless1 },
 				new ExecutionVertex[] { stateful1, stateless1 },
 				checkpointIDCounter,
@@ -447,7 +452,9 @@ public class CheckpointCoordinatorRestoringTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			arrayExecutionVertices,
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						arrayExecutionVertices),
 			arrayExecutionVertices,
 			arrayExecutionVertices,
 			new StandaloneCheckpointIDCounter(),
@@ -626,7 +633,9 @@ public class CheckpointCoordinatorRestoringTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			arrayExecutionVertices,
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						arrayExecutionVertices),
 			arrayExecutionVertices,
 			arrayExecutionVertices,
 			new StandaloneCheckpointIDCounter(),
@@ -882,7 +891,9 @@ public class CheckpointCoordinatorRestoringTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			new JobID(),
 			chkConfig,
-			newJobVertex1.getTaskVertices(),
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						newJobVertex1.getTaskVertices()),
 			newJobVertex1.getTaskVertices(),
 			newJobVertex1.getTaskVertices(),
 			new StandaloneCheckpointIDCounter(),

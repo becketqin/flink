@@ -45,6 +45,7 @@ import org.apache.flink.streaming.runtime.partitioner.ForwardPartitioner;
 import org.apache.flink.streaming.runtime.partitioner.RebalancePartitioner;
 import org.apache.flink.streaming.runtime.partitioner.StreamPartitioner;
 import org.apache.flink.streaming.runtime.tasks.OneInputStreamTask;
+import org.apache.flink.streaming.runtime.tasks.SourceReaderStreamTask;
 import org.apache.flink.streaming.runtime.tasks.SourceStreamTask;
 import org.apache.flink.streaming.runtime.tasks.StreamIterationHead;
 import org.apache.flink.streaming.runtime.tasks.StreamIterationTail;
@@ -277,6 +278,8 @@ public class StreamGraph implements Pipeline {
 
 		if (operatorFactory.isStreamSource()) {
 			addNode(vertexID, slotSharingGroup, coLocationGroup, SourceStreamTask.class, operatorFactory, operatorName);
+		} else if (operatorFactory.isSourceReaderSource()) {
+			addNode(vertexID, slotSharingGroup, coLocationGroup, SourceReaderStreamTask.class, operatorFactory, operatorName);
 		} else {
 			addNode(vertexID, slotSharingGroup, coLocationGroup, OneInputStreamTask.class, operatorFactory, operatorName);
 		}

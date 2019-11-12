@@ -32,6 +32,9 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connectors.source.Source;
+import org.apache.flink.api.connectors.source.SourceReader;
+import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -71,6 +74,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.functions.source.StatefulSequenceSource;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.streaming.api.graph.StreamGraphGenerator;
+import org.apache.flink.streaming.api.operators.SourceReaderOperator;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SplittableIterator;
@@ -80,6 +84,7 @@ import com.esotericsoftware.kryo.Serializer;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1470,6 +1475,66 @@ public abstract class StreamExecutionEnvironment {
 
 		final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
 		return new DataStreamSource<>(this, typeInfo, sourceOperator, isParallel, sourceName);
+	}
+
+	/**
+	 * Ads a data source with the given name.
+	 *
+	 * @param source
+	 * 		the user defined {@link Source}
+	 * @param <OUT>
+	 * 		type of the returned stream
+	 * @return the data stream constructed
+	 */
+	public <OUT, SplitT extends SourceSplit> DataStreamSource<OUT> addSource(Source<OUT, SplitT, ?> source) {
+		return addSource(source, "Custom Source");
+	}
+
+	/**
+	 * Ads a data source with the given name.
+	 *
+	 * @param source
+	 * 		the user defined {@link Source}
+	 * @param sourceName
+	 * 		Name of the data source
+	 * @param <OUT>
+	 * 		type of the returned stream
+	 * @return the data stream constructed
+	 */
+	public <OUT, SplitT extends SourceSplit> DataStreamSource<OUT> addSource(
+			Source<OUT, SplitT, ?> source, String sourceName) {
+		return addSource(source, sourceName, null);
+	}
+
+	/**
+	 * Ads a data source with a custom type information thus opening a
+	 * {@link DataStream}. Only in very special cases does the user need to
+	 * support type information. Otherwise use
+	 * {@link #addSource(Source)}
+	 *
+	 * @param source
+	 * 		the user defined {@link Source}
+	 * @param sourceName
+	 * 		Name of the data source
+	 * @param <OUT>
+	 * 		type of the returned stream
+	 * @param typeInfo
+	 * 		the user defined type information for the stream
+	 * @return the data stream constructed
+	 */
+	@SuppressWarnings("unchecked")
+	public <OUT, SplitT extends SourceSplit> DataStreamSource<OUT> addSource(
+			Source<OUT, SplitT, ?> source, String sourceName, TypeInformation<OUT> typeInfo) {
+		if (typeInfo == null) {
+			try {
+				Type outType = TypeExtractor.getParameterType(Source.class, source.getClass(), 0);
+				typeInfo = (TypeInformation<OUT>) TypeExtractor.createTypeInfo(outType);
+			} catch (final InvalidTypesException e) {
+				typeInfo = (TypeInformation<OUT>) new MissingTypeInfo(sourceName, e);
+			}
+		}
+
+		return new DataStreamSource<>(this, typeInfo, new SourceReaderOperator<>(source), true, sourceName);
 	}
 
 	/**

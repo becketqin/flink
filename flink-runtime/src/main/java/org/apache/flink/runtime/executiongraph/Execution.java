@@ -338,10 +338,6 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		return this.vertex.getNextInputSplit(host);
 	}
 
-	public CompletableFuture<Void> handleOperatorEvent(OperatorEvent event) {
-		return this.vertex.handleOperatorEvent(event);
-	}
-
 	@Override
 	public TaskManagerLocation getAssignedResourceLocation() {
 		// returns non-null only when a location is already assigned
@@ -1023,6 +1019,15 @@ public class Execution implements AccessExecution, Archiveable<ArchivedExecution
 		} else {
 			LOG.debug("The execution has no slot assigned. This indicates that the execution is no longer running.");
 		}
+	}
+
+	public CompletableFuture<Void> handleOperatorEventFromCoordinator(OperatorEvent event) {
+		final LogicalSlot slot = assignedResource;
+
+		return slot
+				.getTaskManagerGateway()
+				.handleOperatorEvent(event, attemptId, vertex.getJobId())
+				.thenCompose(ignored -> null);
 	}
 
 	// --------------------------------------------------------------------------------------------

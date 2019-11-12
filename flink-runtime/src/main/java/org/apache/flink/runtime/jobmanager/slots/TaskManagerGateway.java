@@ -20,6 +20,7 @@ package org.apache.flink.runtime.jobmanager.slots;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.deployment.TaskDeploymentDescriptor;
@@ -152,4 +153,17 @@ public interface TaskManagerGateway {
 		final AllocationID allocationId,
 		final Throwable cause,
 		@RpcTimeout final Time timeout);
+
+	/**
+	 * Handle the operator event from the master.
+	 *
+	 * @param event The operator event sent by the job master.
+	 * @param executionAttemptID The id of the running task.
+	 * @param jobId The id of the job to which the task belongs.
+	 * @return Future acknowledge if the operator event has been handled.
+	 */
+	CompletableFuture<Acknowledge> handleOperatorEvent(
+			OperatorEvent event,
+			ExecutionAttemptID executionAttemptID,
+			JobID jobId);
 }

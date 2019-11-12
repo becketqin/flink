@@ -27,10 +27,14 @@ import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
+import org.apache.flink.api.connectors.source.event.ReaderFailedEvent;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
 import org.apache.flink.core.io.InputSplitSource;
+import org.apache.flink.runtime.source.coordinator.DefaultSourceCoordinator;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
+import org.apache.flink.runtime.source.coordinator.ExecutorNotifier;
 import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
 import org.apache.flink.runtime.JobException;
 import org.apache.flink.runtime.accumulators.StringifiedAccumulatorResult;
@@ -47,6 +51,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinatorContext;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
 import org.apache.flink.types.Either;
 import org.apache.flink.util.OptionalFailure;
@@ -66,8 +71,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -274,6 +281,12 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		catch (Throwable t) {
 			throw new JobException("Creating the input splits caused an error: " + t.getMessage(), t);
 		}
+
+		try {
+			sourceCoordinator = maybeCreateSourceCoordinator();
+		} catch (Throwable t) {
+			throw new JobException("Creating the source coordinator caused an error: " + t.getMessage(), t);
+		}
 	}
 
 	/**
@@ -370,10 +383,11 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		return splitAssigner;
 	}
 
+	public SourceCoordinator getSourceCoordinator() {
+		return sourceCoordinator;
+	}
+
 	public CompletableFuture<Void> handleOperatorEvent(int taskId, OperatorEvent event) {
-		if (sourceCoordinator == null) {
-			throw new IllegalStateException("Cannot find SourceCoordinator to handle the operator event");
-		}
 		return sourceCoordinator.handleOperatorEvent(taskId, event);
 	}
 
@@ -668,5 +682,29 @@ public class ExecutionJobVertex implements AccessExecutionJobVertex, Archiveable
 		}
 
 		return expanded;
+	}
+
+	// --------------------------
+	@SuppressWarnings("unchecked")
+	private SourceCoordinator maybeCreateSourceCoordinator() throws Exception {
+		if (jobVertex.getSplitEnumerator() != null) {
+			ExecutorService coordinatorExecutor = Executors.newSingleThreadExecutor();
+			ScheduledExecutorService workerExecutor = Executors.newSingleThreadScheduledExecutor();
+			ExecutorNotifier executorNotifier = new ExecutorNotifier(
+					workerExecutor,
+					coordinatorExecutor);
+			SourceCoordinatorContext<?> context = new SourceCoordinatorContext<>(
+					executorNotifier, taskVertices);
+			DefaultSourceCoordinator coordinator = new DefaultSourceCoordinator(
+					coordinatorExecutor,
+					jobVertex.getSplitEnumerator(),
+					context,
+					jobVertex.getSplitSerializer(),
+					jobVertex.getEnumeratorCheckpointSerializer());
+			coordinator.initializeState();
+			return coordinator;
+		} else {
+			return DummySourceCoordinator.INSTANCE;
+		}
 	}
 }

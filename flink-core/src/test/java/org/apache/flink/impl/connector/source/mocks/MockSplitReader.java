@@ -35,9 +35,9 @@ import java.util.Queue;
  * 2. handle splits changes in one handleSplitsChanges call or handle one change in each call
  *    of handleSplitsChanges.
  */
-public class MockSplitReader implements SplitReader<int[], MockSplit> {
+public class MockSplitReader implements SplitReader<int[], MockSourceSplit> {
 	// Use LinkedHashMap for determinism.
-	private final Map<String, MockSplit> splits = new LinkedHashMap<>();
+	private final Map<String, MockSourceSplit> splits = new LinkedHashMap<>();
 	private final int numRecordsPerSplitPerFetch;
 	private final boolean blockingFetch;
 	private final boolean handleSplitsInOneShot;
@@ -69,9 +69,9 @@ public class MockSplitReader implements SplitReader<int[], MockSplit> {
 	}
 
 	@Override
-	public void handleSplitsChanges(Queue<SplitsChange<MockSplit>> splitsChanges) {
+	public void handleSplitsChanges(Queue<SplitsChange<MockSourceSplit>> splitsChanges) {
 		do {
-			SplitsChange<MockSplit> splitsChange = splitsChanges.poll();
+			SplitsChange<MockSourceSplit> splitsChange = splitsChanges.poll();
 			if (splitsChange instanceof SplitsAddition) {
 				splitsChange.splits().forEach(s -> splits.put(s.splitId(), s));
 			}
@@ -87,8 +87,8 @@ public class MockSplitReader implements SplitReader<int[], MockSplit> {
 
 	private RecordsBySplits<int[]> getRecords() throws InterruptedException {
 		RecordsBySplits<int[]> records = new RecordsBySplits<>();
-		for (Map.Entry<String, MockSplit> entry : splits.entrySet()) {
-			MockSplit split = entry.getValue();
+		for (Map.Entry<String, MockSourceSplit> entry : splits.entrySet()) {
+			MockSourceSplit split = entry.getValue();
 			for (int i = 0; i < numRecordsPerSplitPerFetch && !split.isFinished(); i++) {
 				int[] record = split.getNext(blockingFetch);
 				if (record != null) {

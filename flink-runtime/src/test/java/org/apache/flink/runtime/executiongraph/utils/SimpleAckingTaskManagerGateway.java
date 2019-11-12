@@ -20,6 +20,7 @@ package org.apache.flink.runtime.executiongraph.utils;
 
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.connectors.source.event.OperatorEvent;
 import org.apache.flink.runtime.checkpoint.CheckpointOptions;
 import org.apache.flink.runtime.clusterframework.types.AllocationID;
 import org.apache.flink.runtime.concurrent.FutureUtils;
@@ -155,6 +156,13 @@ public class SimpleAckingTaskManagerGateway implements TaskManagerGateway {
 		} else {
 			return CompletableFuture.completedFuture(Acknowledge.get());
 		}
+	}
+
+	@Override
+	public CompletableFuture<Acknowledge> handleOperatorEvent(OperatorEvent event,
+															  ExecutionAttemptID executionAttemptID,
+															  JobID jobId) {
+		return CompletableFuture.completedFuture(null);
 	}
 
 	/**

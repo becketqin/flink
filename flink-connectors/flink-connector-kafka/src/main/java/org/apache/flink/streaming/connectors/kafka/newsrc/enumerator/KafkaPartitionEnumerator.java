@@ -55,7 +55,7 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 
 	@Override
 	public void start() {
-		context.notifyNewAssignmentAsync(
+		context.assignSplitAsync(
 				this::checkNewPartitions,
 				this::handleNewPartitions,
 				0L,
@@ -70,9 +70,6 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 	@Override
 	public void addSplitsBack(List<KafkaPartition> splits, int subtaskId) {
 		unassignedPartitions.addAll(splits);
-		if (!unassignedPartitions.isEmpty()) {
-			context.notifyNewAssignment();
-		}
 	}
 
 	@Override
@@ -106,7 +103,7 @@ public class KafkaPartitionEnumerator implements SplitEnumerator<KafkaPartition,
 	}
 
 	@Override
-	public void close() throws IOException {
+	public void close() {
 		kafkaConsumer.close();
 	}
 

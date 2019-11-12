@@ -93,6 +93,11 @@ public class SimpleOperatorFactory<OUT> implements StreamOperatorFactory<OUT> {
 	}
 
 	@Override
+	public boolean isSourceReaderSource() {
+		return operator instanceof SourceReaderOperator;
+	}
+
+	@Override
 	public boolean isOutputTypeConfigurable() {
 		return operator instanceof OutputTypeConfigurable;
 	}

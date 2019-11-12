@@ -38,7 +38,7 @@ import java.io.IOException;
 public class KafkaSource<K, V, T> implements Source<T, KafkaPartition, KafkaPartitionsCheckpoint> {
 
 	@Override
-	public SourceReader createReader(Configuration config, SourceContext context) {
+	public SourceReader createReader(Configuration config) {
 		FutureNotifier futureNotifier = new FutureNotifier();
 		FutureCompletingBlockingQueue<RecordsWithSplitIds<ConsumerRecord<K, V>>> elementQueue =
 				new FutureCompletingBlockingQueue<>(futureNotifier);

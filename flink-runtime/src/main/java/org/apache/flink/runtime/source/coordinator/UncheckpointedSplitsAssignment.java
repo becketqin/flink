@@ -20,6 +20,7 @@ package org.apache.flink.runtime.source.coordinator;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.function.FunctionWithException;
 
 import java.io.ObjectInput;
@@ -51,14 +52,11 @@ class UncheckpointedSplitsAssignment<SplitT extends SourceSplit> {
 	}
 
 	void recordNewAssignment(SplitsAssignment<SplitT> assignment) {
-		if (assignment.type() == SplitsAssignment.Type.INCREMENTAL) {
-			assignment.assignment().forEach((id, splits) -> {
-				uncheckpointedAssignments.computeIfAbsent(id, ignored -> new ArrayList<>())
-										 .addAll(splits);
-			});
-		} else {
-			throw new UnsupportedOperationException("The OVERRIDING assignment is not supported yet.");
-		}
+		Preconditions.checkArgument(assignment.type() != SplitsAssignment.Type.OVERRIDING,
+				"The OVERRIDING assignment is not supported yet.");
+		assignment.assignment().forEach((id, splits) -> uncheckpointedAssignments
+				.computeIfAbsent(id, ignored -> new ArrayList<>())
+				.addAll(splits));
 	}
 
 	void snapshotState(long checkpointId,

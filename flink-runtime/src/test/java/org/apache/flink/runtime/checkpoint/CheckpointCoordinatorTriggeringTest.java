@@ -27,6 +27,7 @@ import org.apache.flink.runtime.executiongraph.ExecutionVertex;
 import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.util.TestLogger;
@@ -36,6 +37,7 @@ import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
+import java.util.Collections;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -119,7 +121,9 @@ public class CheckpointCoordinatorTriggeringTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -203,7 +207,9 @@ public class CheckpointCoordinatorTriggeringTest extends TestLogger {
 		final CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			new ExecutionVertex[] { vertex },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex }),
 			new ExecutionVertex[] { vertex },
 			new ExecutionVertex[] { vertex },
 			new StandaloneCheckpointIDCounter(),
@@ -271,7 +277,9 @@ public class CheckpointCoordinatorTriggeringTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			new JobID(),
 			chkConfig,
-			new ExecutionVertex[] { vertex1 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1 }),
 			new ExecutionVertex[] { vertex1 },
 			new ExecutionVertex[] { vertex1 },
 			new StandaloneCheckpointIDCounter(),

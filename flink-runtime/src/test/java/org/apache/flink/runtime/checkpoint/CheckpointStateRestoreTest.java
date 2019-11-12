@@ -30,6 +30,7 @@ import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.SharedStateRegistry;
@@ -126,7 +127,9 @@ public class CheckpointStateRestoreTest {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { stateful1, stateful2, stateful3, stateless1, stateless2 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { stateful1, stateful2, stateful3, stateless1, stateless2 }),
 				new ExecutionVertex[] { stateful1, stateful2, stateful3, stateless1, stateless2 },
 				new ExecutionVertex[0],
 				new StandaloneCheckpointIDCounter(),
@@ -212,7 +215,9 @@ public class CheckpointStateRestoreTest {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				new JobID(),
 				chkConfig,
-				new ExecutionVertex[] { mock(ExecutionVertex.class) },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { mock(ExecutionVertex.class) }),
 				new ExecutionVertex[] { mock(ExecutionVertex.class) },
 				new ExecutionVertex[0],
 				new StandaloneCheckpointIDCounter(),
@@ -278,7 +283,9 @@ public class CheckpointStateRestoreTest {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			new JobID(),
 			chkConfig,
-			new ExecutionVertex[] {},
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] {}),
 			new ExecutionVertex[] {},
 			new ExecutionVertex[] {},
 			new StandaloneCheckpointIDCounter(),

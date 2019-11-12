@@ -17,7 +17,7 @@
 
 package org.apache.flink.impl.connector.source.reader.fetcher;
 
-import org.apache.flink.impl.connector.source.mocks.MockSplit;
+import org.apache.flink.impl.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.impl.connector.source.mocks.MockSplitReader;
 import org.apache.flink.util.ThrowableCatchingRunnableWrapper;
 import org.junit.Test;
@@ -45,7 +45,7 @@ public class FetchTaskTest {
 		ThrowableCatchingRunnableWrapper wrapper = new ThrowableCatchingRunnableWrapper(exception::set);
 		Thread t = new Thread(wrapper.wrap(loopingRunnable));
 
-		FetchTask<int[], MockSplit> fetchTask =
+		FetchTask<int[], MockSourceSplit> fetchTask =
 				new FetchTask<>(mockSplitReader, new LinkedBlockingQueue<>(), s -> {}, t);
 		loopingRunnable.wrapped = fetchTask;
 		t.start();

@@ -29,6 +29,7 @@ import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.runtime.state.testutils.TestCompletedCheckpointStorageLocation;
@@ -457,7 +458,9 @@ public class CheckpointCoordinatorMasterHooksTest {
 		return new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[0],
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[0]),
 				ackVertices,
 				new ExecutionVertex[0],
 				new StandaloneCheckpointIDCounter(),

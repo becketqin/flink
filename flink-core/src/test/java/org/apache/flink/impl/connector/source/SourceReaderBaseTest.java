@@ -19,7 +19,7 @@ package org.apache.flink.impl.connector.source;
 
 import org.apache.flink.api.connectors.source.Boundedness;
 import org.apache.flink.impl.connector.source.mocks.MockSourceReader;
-import org.apache.flink.impl.connector.source.mocks.MockSplit;
+import org.apache.flink.impl.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.impl.connector.source.mocks.MockSplitReader;
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.reader.SourceReaderBase;
@@ -41,7 +41,7 @@ import java.util.Queue;
 /**
  * A unit test class for {@link SourceReaderBase}
  */
-public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
+public class SourceReaderBaseTest extends SourceReaderTest<MockSourceSplit> {
 
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
@@ -58,14 +58,14 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 		MockSourceReader reader = new MockSourceReader(
 				futureNotifier,
 				elementsQueue,
-				() -> new SplitReader<int[], MockSplit>() {
+				() -> new SplitReader<int[], MockSourceSplit>() {
 					@Override
 					public RecordsWithSplitIds<int[]> fetch() {
 						throw new RuntimeException(errMsg);
 					}
 
 					@Override
-					public void handleSplitsChanges(Queue<SplitsChange<MockSplit>> splitsChanges) {
+					public void handleSplitsChanges(Queue<SplitsChange<MockSourceSplit>> splitsChanges) {
 						// We have to handle split changes first, otherwise fetch will not be called.
 						splitsChanges.clear();
 					}
@@ -102,8 +102,8 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 	}
 
 	@Override
-	protected List<MockSplit> getSplits(int numSplits, int numRecordsPerSplit, Boundedness boundedness) {
-		List<MockSplit> mockSplits = new ArrayList<>();
+	protected List<MockSourceSplit> getSplits(int numSplits, int numRecordsPerSplit, Boundedness boundedness) {
+		List<MockSourceSplit> mockSplits = new ArrayList<>();
 		for (int i = 0; i < numSplits; i++) {
 			mockSplits.add(getSplit(i, numRecordsPerSplit, boundedness));
 		}
@@ -111,12 +111,12 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 	}
 
 	@Override
-	protected MockSplit getSplit(int splitId, int numRecords, Boundedness boundedness) {
-		MockSplit mockSplit;
+	protected MockSourceSplit getSplit(int splitId, int numRecords, Boundedness boundedness) {
+		MockSourceSplit mockSplit;
 		if (boundedness == Boundedness.BOUNDED) {
-			mockSplit = new MockSplit(splitId, 0, numRecords);
+			mockSplit = new MockSourceSplit(splitId, 0, numRecords);
 		} else {
-			mockSplit = new MockSplit(splitId);
+			mockSplit = new MockSourceSplit(splitId);
 		}
 		for (int j = 0; j < numRecords; j++) {
 			mockSplit.addRecord(splitId * 10 + j);
@@ -125,7 +125,7 @@ public class SourceReaderBaseTest extends SourceReaderTest<MockSplit> {
 	}
 
 	@Override
-	protected long getIndex(MockSplit split) {
+	protected long getIndex(MockSourceSplit split) {
 		return split.index();
 	}
 

@@ -24,6 +24,7 @@ import org.apache.flink.api.common.InputDependencyConstraint;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
+import org.apache.flink.api.connectors.source.event.ReaderFailedEvent;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.core.io.InputSplit;
 import org.apache.flink.core.io.InputSplitAssigner;
@@ -40,6 +41,7 @@ import org.apache.flink.runtime.jobmanager.scheduler.CoLocationConstraint;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.LocationPreferenceConstraint;
 import org.apache.flink.runtime.jobmaster.LogicalSlot;
+import org.apache.flink.runtime.messages.Acknowledge;
 import org.apache.flink.runtime.scheduler.strategy.ExecutionVertexID;
 import org.apache.flink.runtime.taskmanager.TaskManagerLocation;
 import org.apache.flink.runtime.util.EvictingBoundedList;
@@ -62,7 +64,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 import java.util.stream.IntStream;
 
 import static org.apache.flink.runtime.execution.ExecutionState.FINISHED;
@@ -273,9 +274,8 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 		}
 	}
 
-	public CompletableFuture<Void> handleOperatorEvent(OperatorEvent event) {
-		final int taskId = getParallelSubtaskIndex();
-		return jobVertex.handleOperatorEvent(taskId, event);
+	public CompletableFuture<Void> handleOperatorEventFromCoordinator(OperatorEvent event) {
+		return currentExecution.handleOperatorEventFromCoordinator(event);
 	}
 
 	@Override
@@ -618,7 +618,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 				// global change happened since, reject this action
 				throw new GlobalModVersionMismatch(originatingGlobalModVersion, actualModVersion);
 			}
-
+			jobVertex.getSourceCoordinator().handleOperatorEvent(subTaskIndex, new ReaderFailedEvent(subTaskIndex));
 			return resetForNewExecutionInternal(timestamp, originatingGlobalModVersion);
 		}
 	}
@@ -657,6 +657,7 @@ public class ExecutionVertex implements AccessExecutionVertex, Archiveable<Archi
 					assigner.returnInputSplit(inputSplits, getParallelSubtaskIndex());
 					inputSplits.clear();
 				}
+				jobVertex.getSourceCoordinator().handleOperatorEvent(subTaskIndex, new ReaderFailedEvent(subTaskIndex));
 			}
 
 			CoLocationGroup grp = jobVertex.getCoLocationGroup();

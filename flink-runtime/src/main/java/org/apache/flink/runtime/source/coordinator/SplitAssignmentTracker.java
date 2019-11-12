@@ -21,6 +21,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.SplitsAssignment;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.util.Preconditions;
 
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -50,7 +51,6 @@ public class SplitAssignmentTracker<SplitT extends SourceSplit> {
 	 * Take a snapshot of the uncheckpointed split assignments.
 	 *
 	 * @param checkpointId the id of the ongoing checkpoint
-	 * @return the uncheckpointed splits assignment that needs to be saved.
 	 */
 	public void snapshotState(long checkpointId,
 							  SimpleVersionedSerializer<SplitT> splitSerializer,
@@ -83,6 +83,10 @@ public class SplitAssignmentTracker<SplitT extends SourceSplit> {
 		currentAssignment.putAll(assignments);
 	}
 
+	public void onCheckpointComplete(long checkpointId) {
+		uncheckpointedAssignment.onCheckpointCompleted(checkpointId);
+	}
+
 	/**
 	 * Get the current split assignment.
 	 *
@@ -98,10 +102,10 @@ public class SplitAssignmentTracker<SplitT extends SourceSplit> {
 	 * @param splitsAssignment the new split assignment.
 	 */
 	public void recordSplitAssignment(SplitsAssignment<SplitT> splitsAssignment) {
-		splitsAssignment.assignment().forEach((id, splits) -> {
-			currentAssignment.computeIfAbsent(id, ignored -> new ArrayList<>())
-							 .addAll(splits);
-		});
+		Preconditions.checkArgument(splitsAssignment.type() != SplitsAssignment.Type.OVERRIDING,
+				"The OVERRIDING assignment is not supported yet.");
+		splitsAssignment.assignment().forEach((id, splits) ->
+				currentAssignment.computeIfAbsent(id, ignored -> new ArrayList<>()).addAll(splits));
 		uncheckpointedAssignment.recordNewAssignment(splitsAssignment);
 	}
 

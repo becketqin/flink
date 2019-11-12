@@ -36,9 +36,9 @@ public interface Source<T, SplitT extends SourceSplit, EnumChkT> extends Seriali
 	 * The reader starts fresh and does not have any state to resume.
 	 *
 	 * @param config A flat config for this source operator.
-	 * @param context the {@link SourceContext} that exposes some runtime primitives.
+	 * @return A new SourceReader.
 	 */
-	SourceReader<T, SplitT> createReader(Configuration config, SourceContext context) throws IOException;
+	SourceReader<T, SplitT> createReader(Configuration config) throws IOException;
 
 	/**
 	 * Creates a new SplitEnumerator for this source, starting a new input.

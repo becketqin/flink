@@ -19,7 +19,7 @@ package org.apache.flink.impl.connector.source.reader.fetcher;
 
 import org.apache.flink.impl.connector.source.reader.RecordsWithSplitIds;
 import org.apache.flink.impl.connector.source.mocks.MockSplitReader;
-import org.apache.flink.impl.connector.source.mocks.MockSplit;
+import org.apache.flink.impl.connector.source.mocks.MockSourceSplit;
 import org.apache.flink.impl.connector.source.reader.splitreader.SplitReader;
 import org.apache.flink.testutils.TestUtils;
 import org.apache.flink.util.ThrowableCatchingRunnableWrapper;
@@ -45,7 +45,7 @@ public class SplitFetcherTest {
 	private ThrowableCatchingRunnableWrapper wrapper;
 	private MockSplitReader mockSplitReader;
 	private BlockingQueue<RecordsWithSplitIds<int[]>> outputQueue;
-	private SplitFetcher<int[], MockSplit> fetcher;
+	private SplitFetcher<int[], MockSourceSplit> fetcher;
 	Thread fetcherThread;
 
 	@Before
@@ -64,7 +64,7 @@ public class SplitFetcherTest {
 	@Test (timeout = 30000L)
 	public void testBlockOnEmptySplits() throws InterruptedException {
 		setupFetcher(1, true, true);
-		MockSplit mockSplit = new MockSplit(0);
+		MockSourceSplit mockSplit = new MockSourceSplit(0);
 		mockSplit.addRecord(123);
 		// Add a split to the fetcher to trigger actual fetch.
 		fetcher.addSplits(Collections.singletonList(mockSplit));
@@ -76,7 +76,7 @@ public class SplitFetcherTest {
 	@Test (timeout = 30000L)
 	public void testAddSplitsAndFetchRecords() throws InterruptedException {
 		setupFetcher(1, true, true);
-		MockSplit mockSplit = new MockSplit(0);
+		MockSourceSplit mockSplit = new MockSourceSplit(0);
 		mockSplit.addRecord(123);
 		// Add a split to the fetcher to trigger actual fetch.
 		fetcher.addSplits(Collections.singletonList(mockSplit));
@@ -88,7 +88,7 @@ public class SplitFetcherTest {
 	@Test (timeout = 30000L)
 	public void testRemoveSplits() throws InterruptedException {
 		setupFetcher(1, true, true);
-		MockSplit mockSplit = new MockSplit(0);
+		MockSourceSplit mockSplit = new MockSourceSplit(0);
 		mockSplit.addRecord(123);
 		// Add a split to the fetcher to trigger actual fetch.
 		fetcher.addSplits(Collections.singletonList(mockSplit));
@@ -109,7 +109,7 @@ public class SplitFetcherTest {
 	@Test
 	public void testNeverInterruptSplitReader() throws InterruptedException {
 		setupFetcher(1, false, true);
-		MockSplit mockSplit = new MockSplit(0);
+		MockSourceSplit mockSplit = new MockSourceSplit(0);
 		mockSplit.addRecord(123);
 		// Consume a record to ensure the split fetcher is running normally.
 		fetcher.addSplits(Collections.singletonList(mockSplit));
@@ -142,7 +142,7 @@ public class SplitFetcherTest {
 		fetcherThread = runFetcher(fetcher);
 	}
 
-	private Thread runFetcher(SplitFetcher<int[], MockSplit> splitFetcher) {
+	private Thread runFetcher(SplitFetcher<int[], MockSourceSplit> splitFetcher) {
 		Thread t = new Thread(wrapper.wrap(splitFetcher));
 		t.start();
 		return t;

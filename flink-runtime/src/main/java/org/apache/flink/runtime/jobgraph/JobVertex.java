@@ -21,8 +21,10 @@ package org.apache.flink.runtime.jobgraph;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InputDependencyConstraint;
 import org.apache.flink.api.common.operators.ResourceSpec;
+import org.apache.flink.api.connectors.source.SplitEnumerator;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplitSource;
+import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.io.network.partition.ResultPartitionType;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
@@ -90,6 +92,15 @@ public class JobVertex implements java.io.Serializable {
 
 	/** Optionally, a source of input splits */
 	private InputSplitSource<?> inputSplitSource;
+
+	/** Optional SplitEnumerator that for input sources. */
+	private SplitEnumerator<?, ?> splitEnumerator;
+
+	/** The split serializer. */
+	private SimpleVersionedSerializer<?> splitSerializer;
+
+	/** The serializer for the enumerator checkpoints. */
+	private SimpleVersionedSerializer<?> enumeratorCheckpointSerializer;
 
 	/** The name of the vertex. This will be shown in runtime logs and will be in the runtime environment */
 	private String name;
@@ -347,8 +358,36 @@ public class JobVertex implements java.io.Serializable {
 		return inputSplitSource;
 	}
 
+	/**
+	 * @deprecated use {@link #setSplitEnumerator(SplitEnumerator)} instead.
+	 */
+	@Deprecated
 	public void setInputSplitSource(InputSplitSource<?> inputSplitSource) {
 		this.inputSplitSource = inputSplitSource;
+	}
+
+	public SimpleVersionedSerializer<?> getSplitSerializer() {
+		return splitSerializer;
+	}
+
+	public void setSplitSerializer(SimpleVersionedSerializer<?> splitSerializer) {
+		this.splitSerializer = splitSerializer;
+	}
+
+	public SimpleVersionedSerializer<?> getEnumeratorCheckpointSerializer() {
+		return enumeratorCheckpointSerializer;
+	}
+
+	public void setSplitEnumeratorCheckpointSerializer(SimpleVersionedSerializer<?> enumeratorCheckpointSerializer) {
+		this.enumeratorCheckpointSerializer = enumeratorCheckpointSerializer;
+	}
+
+	public SplitEnumerator<?, ?> getSplitEnumerator() {
+		return splitEnumerator;
+	}
+
+	public void setSplitEnumerator(SplitEnumerator<?, ?> splitEnumerator) {
+		this.splitEnumerator = splitEnumerator;
 	}
 
 	public List<IntermediateDataSet> getProducedDataSets() {

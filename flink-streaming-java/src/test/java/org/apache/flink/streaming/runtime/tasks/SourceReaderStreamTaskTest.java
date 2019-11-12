@@ -158,7 +158,7 @@ public class SourceReaderStreamTaskTest {
 		private ListState<Integer> counterState;
 
 		TestingIntegerSourceReaderOperator(int numRecords) {
-			super(null, null);
+			super(null);
 			this.numRecords = numRecords;
 		}
 

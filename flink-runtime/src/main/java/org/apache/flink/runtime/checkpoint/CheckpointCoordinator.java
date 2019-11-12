@@ -36,6 +36,7 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
 import org.apache.flink.runtime.state.CheckpointStorageCoordinatorView;
 import org.apache.flink.runtime.state.CheckpointStorageLocation;
 import org.apache.flink.runtime.state.CompletedCheckpointStorageLocation;
@@ -44,6 +45,7 @@ import org.apache.flink.runtime.state.SharedStateRegistryFactory;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.util.clock.Clock;
 import org.apache.flink.util.clock.SystemClock;
+import org.apache.flink.runtime.topology.VertexID;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.StringUtils;
@@ -101,7 +103,7 @@ public class CheckpointCoordinator {
 	private final Executor executor;
 
 	/** Tasks who need to be sent a message when a checkpoint is started. */
-	private final ExecutionVertex[] tasksToTrigger;
+	private final Map<SourceCoordinator, ExecutionVertex[]> tasksToTrigger;
 
 	/** Tasks who need to acknowledge a checkpoint before it succeeds. */
 	private final ExecutionVertex[] tasksToWaitFor;
@@ -191,18 +193,18 @@ public class CheckpointCoordinator {
 	// --------------------------------------------------------------------------------------------
 
 	public CheckpointCoordinator(
-		JobID job,
-		CheckpointCoordinatorConfiguration chkConfig,
-		ExecutionVertex[] tasksToTrigger,
-		ExecutionVertex[] tasksToWaitFor,
-		ExecutionVertex[] tasksToCommitTo,
-		CheckpointIDCounter checkpointIDCounter,
-		CompletedCheckpointStore completedCheckpointStore,
-		StateBackend checkpointStateBackend,
-		Executor executor,
-		ScheduledExecutor timer,
-		SharedStateRegistryFactory sharedStateRegistryFactory,
-		CheckpointFailureManager failureManager) {
+			JobID job,
+			CheckpointCoordinatorConfiguration chkConfig,
+			Map<SourceCoordinator, ExecutionVertex[]> tasksToTrigger,
+			ExecutionVertex[] tasksToWaitFor,
+			ExecutionVertex[] tasksToCommitTo,
+			CheckpointIDCounter checkpointIDCounter,
+			CompletedCheckpointStore completedCheckpointStore,
+			StateBackend checkpointStateBackend,
+			Executor executor,
+			ScheduledExecutor timer,
+			SharedStateRegistryFactory sharedStateRegistryFactory,
+			CheckpointFailureManager failureManager) {
 
 		this(
 			job,
@@ -224,7 +226,7 @@ public class CheckpointCoordinator {
 	public CheckpointCoordinator(
 			JobID job,
 			CheckpointCoordinatorConfiguration chkConfig,
-			ExecutionVertex[] tasksToTrigger,
+			Map<SourceCoordinator, ExecutionVertex[]> tasksToTrigger,
 			ExecutionVertex[] tasksToWaitFor,
 			ExecutionVertex[] tasksToCommitTo,
 			CheckpointIDCounter checkpointIDCounter,
@@ -509,24 +511,31 @@ public class CheckpointCoordinator {
 
 		// check if all tasks that we need to trigger are running.
 		// if not, abort the checkpoint
-		Execution[] executions = new Execution[tasksToTrigger.length];
-		for (int i = 0; i < tasksToTrigger.length; i++) {
-			Execution ee = tasksToTrigger[i].getCurrentExecutionAttempt();
-			if (ee == null) {
-				LOG.info("Checkpoint triggering task {} of job {} is not being executed at the moment. Aborting checkpoint.",
-						tasksToTrigger[i].getTaskNameWithSubtaskIndex(),
-						job);
-				throw new CheckpointException(CheckpointFailureReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
-			} else if (ee.getState() == ExecutionState.RUNNING) {
-				executions[i] = ee;
-			} else {
-				LOG.info("Checkpoint triggering task {} of job {} is not in state {} but {} instead. Aborting checkpoint.",
-						tasksToTrigger[i].getTaskNameWithSubtaskIndex(),
-						job,
-						ExecutionState.RUNNING,
-						ee.getState());
-				throw new CheckpointException(CheckpointFailureReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
+		Map<SourceCoordinator, Execution[]> executionsToTrigger = new HashMap<>();
+		for (Map.Entry<SourceCoordinator, ExecutionVertex[]> entry : tasksToTrigger.entrySet()) {
+			ExecutionVertex[] tasksToTriggerInVertex = entry.getValue();
+			Execution[] executions = new Execution[tasksToTriggerInVertex.length];
+			for (int i = 0; i < tasksToTriggerInVertex.length; i++) {
+				Execution ee = tasksToTriggerInVertex[i].getCurrentExecutionAttempt();
+				if (ee == null) {
+					LOG.info(
+							"Checkpoint triggering task {} of job {} is not being executed at the moment. Aborting checkpoint.",
+							tasksToTriggerInVertex[i].getTaskNameWithSubtaskIndex(),
+							job);
+					throw new CheckpointException(CheckpointFailureReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
+				} else if (ee.getState() == ExecutionState.RUNNING) {
+					executions[i] = ee;
+				} else {
+					LOG.info(
+							"Checkpoint triggering task {} of job {} is not in state {} but {} instead. Aborting checkpoint.",
+							tasksToTriggerInVertex[i].getTaskNameWithSubtaskIndex(),
+							job,
+							ExecutionState.RUNNING,
+							ee.getState());
+					throw new CheckpointException(CheckpointFailureReason.NOT_ALL_REQUIRED_TASKS_RUNNING);
+				}
 			}
+			executionsToTrigger.put(entry.getKey(), executions);
 		}
 
 		// next, check if all tasks that need to acknowledge the checkpoint are running.
@@ -635,12 +644,26 @@ public class CheckpointCoordinator {
 					checkpointStorageLocation.getLocationReference());
 
 			// send the messages to the tasks that trigger their checkpoint
-			for (Execution execution: executions) {
-				if (props.isSynchronous()) {
-					execution.triggerSynchronousSavepoint(checkpointID, timestamp, checkpointOptions, advanceToEndOfTime);
-				} else {
-					execution.triggerCheckpoint(checkpointID, timestamp, checkpointOptions);
-				}
+			for (Map.Entry<SourceCoordinator, Execution[]> entry : executionsToTrigger.entrySet()) {
+				SourceCoordinator coordinator = entry.getKey();
+				Execution[] executions = entry.getValue();
+				// This pushes the snapshot task to the source coordinator internal task queue, and
+				// delegate the triggering of checkpoint to that thread as well. Doing this
+				// guarantees taking snapshot of the source coordinator and the triggering of the
+				// corresponding executions are done by the same thread, thus atomic.
+				coordinator.snapshotState(checkpointID).thenRun(() -> {
+					for (Execution execution : executions) {
+						if (props.isSynchronous()) {
+							execution.triggerSynchronousSavepoint(
+									checkpointID,
+									timestamp,
+									checkpointOptions,
+									advanceToEndOfTime);
+						} else {
+							execution.triggerCheckpoint(checkpointID, timestamp, checkpointOptions);
+						}
+					}
+				});
 			}
 
 			numUnsuccessfulCheckpointsTriggers.set(0);
@@ -917,8 +940,12 @@ public class CheckpointCoordinator {
 
 		// send the "notify complete" call to all vertices
 		final long timestamp = completedCheckpoint.getTimestamp();
-
+		Set<VertexID> notifiedCoordinator = new HashSet<>();
 		for (ExecutionVertex ev : tasksToCommitTo) {
+			ExecutionJobVertex ejv = ev.getJobVertex();
+			if (notifiedCoordinator.add(ejv.getJobVertexId())) {
+				ejv.getSourceCoordinator().onCheckpointComplete(checkpointId);
+			}
 			Execution ee = ev.getCurrentExecutionAttempt();
 			if (ee != null) {
 				ee.notifyCheckpointComplete(checkpointId, timestamp);

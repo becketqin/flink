@@ -108,7 +108,7 @@ public interface InputFormat<OT, T extends InputSplit> extends InputSplitSource<
 	 */
 	@Override
 	InputSplitAssigner getInputSplitAssigner(T[] inputSplits);
-	
+
 	// --------------------------------------------------------------------------------------------
 	
 	/**

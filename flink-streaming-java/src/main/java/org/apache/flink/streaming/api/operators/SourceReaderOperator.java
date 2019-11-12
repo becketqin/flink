@@ -20,17 +20,22 @@ package org.apache.flink.streaming.api.operators;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
+import org.apache.flink.api.common.state.ValueState;
+import org.apache.flink.api.common.state.ValueStateDescriptor;
 import org.apache.flink.api.common.typeutils.base.array.BytePrimitiveArraySerializer;
+import org.apache.flink.api.connectors.source.Source;
 import org.apache.flink.api.connectors.source.SourceOutput;
 import org.apache.flink.api.connectors.source.SourceReader;
 import org.apache.flink.api.connectors.source.SourceSplit;
 import org.apache.flink.api.connectors.source.event.AddSplitEvent;
 import org.apache.flink.api.connectors.source.event.OperatorEvent;
+import org.apache.flink.api.connectors.source.event.ReaderRegistrationEvent;
 import org.apache.flink.api.connectors.source.event.SourceEvent;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.impl.connector.source.reader.SourceReaderContext;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.jobgraph.tasks.SourceCoordinatorDelegate;
+import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.StateSnapshotContext;
 import org.apache.flink.streaming.runtime.io.InputStatus;
 import org.apache.flink.streaming.runtime.io.PushingAsyncDataInput;
@@ -49,22 +54,24 @@ import java.util.concurrent.CompletableFuture;
  * @param <OUT> The output type of the operator
  */
 @Internal
-public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
+public class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 		extends AbstractStreamOperator<OUT> implements PushingAsyncDataInput<OUT> {
 
+	private final Source<OUT, SplitT, ?> source;
 	private SourceReader<OUT, SplitT> sourceReader;
 	private SimpleVersionedSerializer<SplitT> splitSerializer;
+	private ValueState<Integer> serializerVersion;
 	private ListState<byte[]> readerState;
 	private SourceCoordinatorDelegate sourceCoordinatorDelegate;
 
-	public SourceReaderOperator(SourceReader<OUT, SplitT> sourceReader,
-								SimpleVersionedSerializer<SplitT> splitSerializer) {
-		this.sourceReader = sourceReader;
-		this.splitSerializer = splitSerializer;
+	public SourceReaderOperator(Source<OUT, SplitT, ?> source) {
+		this.source = source;
+		this.splitSerializer = source.getSplitSerializer();
 	}
 
 	@Override
 	public void open() throws Exception {
+		sourceReader = source.createReader(getOperatorConfig().getConfiguration());
 		sourceReader.setSourceReaderContext(new SourceReaderContext() {
 			@Override
 			public MetricGroup getMetricGroup() {
@@ -76,9 +83,18 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 				return sourceCoordinatorDelegate.sendOperatorEvent(event);
 			}
 		});
-		this.readerState = getRuntimeContext().getListState(
-				new ListStateDescriptor<>("SourceReaderState", BytePrimitiveArraySerializer.INSTANCE));
 		sourceReader.start();
+
+		// restore the state if necessary.
+		if (readerState.get() != null) {
+			Integer version = serializerVersion.value();
+			List<SplitT> splits = new ArrayList<>();
+			for (byte[] splitBytes : readerState.get()) {
+				splits.add(splitSerializer.deserialize(version, splitBytes));
+			}
+			sourceReader.addSplits(splits);
+		}
+		serializerVersion.update(splitSerializer.getVersion());
 	}
 
 	@Override
@@ -111,6 +127,15 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 		return sourceReader.isAvailable();
 	}
 
+	@Override
+	public void initializeState(StateInitializationContext context) throws Exception {
+		super.initializeState(context);
+		readerState = getRuntimeContext().getListState(
+				new ListStateDescriptor<>("SourceReaderState", BytePrimitiveArraySerializer.INSTANCE));
+		serializerVersion = getRuntimeContext().getState(
+				new ValueStateDescriptor<>("SplitSerializerVersion", Integer.class));
+	}
+
 	public void setSourceCoordinatorDelegate(SourceCoordinatorDelegate sourceCoordinatorDelegate) {
 		this.sourceCoordinatorDelegate = sourceCoordinatorDelegate;
 	}
@@ -126,7 +151,13 @@ public abstract class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 		}
 	}
 
-	private void registerReader() {
+	public Source getSource() {
+		return source;
+	}
 
+	private void registerReader() {
+		sourceCoordinatorDelegate.sendOperatorEvent(new ReaderRegistrationEvent(
+				getRuntimeContext().getIndexOfThisSubtask(),
+				"Some Location"));
 	}
 }

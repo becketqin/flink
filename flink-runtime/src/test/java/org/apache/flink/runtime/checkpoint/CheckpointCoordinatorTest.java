@@ -35,6 +35,7 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
 import org.apache.flink.runtime.messages.checkpoint.DeclineCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.IncrementalRemoteKeyedStateHandle;
 import org.apache.flink.runtime.state.KeyGroupRange;
 import org.apache.flink.runtime.state.KeyGroupRangeAssignment;
@@ -153,7 +154,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex1, triggerVertex2 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { triggerVertex1, triggerVertex2 }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2 },
 				new ExecutionVertex[] {},
 				new StandaloneCheckpointIDCounter(),
@@ -224,7 +227,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex1, triggerVertex2 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex1, triggerVertex2 }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2 },
 				new ExecutionVertex[] {},
 				new StandaloneCheckpointIDCounter(),
@@ -286,7 +291,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex1, triggerVertex2 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex1, triggerVertex2 }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2 },
 				new ExecutionVertex[] {},
 				new StandaloneCheckpointIDCounter(),
@@ -773,7 +780,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex1, triggerVertex2 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex1, triggerVertex2 }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2, ackVertex3 },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -917,7 +926,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex1, triggerVertex2 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex1, triggerVertex2 }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2, ackVertex3 },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1094,7 +1105,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2 },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1173,7 +1186,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex1, ackVertex2 },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1247,7 +1262,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jobId,
 			chkConfig,
-			new ExecutionVertex[] { triggerVertex },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { triggerVertex }),
 			new ExecutionVertex[] {triggerVertex, ackVertex1, ackVertex2},
 			new ExecutionVertex[0],
 			new StandaloneCheckpointIDCounter(),
@@ -1516,7 +1533,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			new ExecutionVertex[] { vertex1, vertex2 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1, vertex2 }),
 			new ExecutionVertex[] { vertex1, vertex2 },
 			new ExecutionVertex[] { vertex1, vertex2 },
 			counter,
@@ -1630,7 +1649,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1703,7 +1724,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1779,7 +1802,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { triggerVertex },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { triggerVertex }),
 				new ExecutionVertex[] { ackVertex },
 				new ExecutionVertex[] { commitVertex },
 				new StandaloneCheckpointIDCounter(),
@@ -1835,7 +1860,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jobId,
 			chkConfig,
-			new ExecutionVertex[] { vertex1 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1 }),
 			new ExecutionVertex[] { vertex1 },
 			new ExecutionVertex[] { vertex1 },
 			checkpointIDCounter,
@@ -1896,7 +1923,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jobId,
 			chkConfig,
-			new ExecutionVertex[] { vertex1 },
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1 }),
 			new ExecutionVertex[] { vertex1 },
 			new ExecutionVertex[] { vertex1 },
 			new StandaloneCheckpointIDCounter(),
@@ -1942,7 +1971,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 			CheckpointCoordinator coord = new CheckpointCoordinator(
 				jid,
 				chkConfig,
-				new ExecutionVertex[] { vertex1 },
+					Collections.singletonMap(
+							DummySourceCoordinator.INSTANCE,
+							new ExecutionVertex[] { vertex1 }),
 				new ExecutionVertex[] { vertex1 },
 				new ExecutionVertex[] { vertex1 },
 				new StandaloneCheckpointIDCounter(),
@@ -2182,9 +2213,11 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			new JobID(),
 			chkConfig,
-			new ExecutionVertex[]{vertex1},
-			new ExecutionVertex[]{vertex1},
-			new ExecutionVertex[]{vertex1},
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1 }),
+			new ExecutionVertex[]{ vertex1 },
+			new ExecutionVertex[]{ vertex1 },
 			new StandaloneCheckpointIDCounter(),
 			new StandaloneCompletedCheckpointStore(1),
 			new MemoryStateBackend(),
@@ -2231,9 +2264,11 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			new JobID(),
 			chkConfig,
-			new ExecutionVertex[]{vertex1},
-			new ExecutionVertex[]{vertex1},
-			new ExecutionVertex[]{vertex1},
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1 }),
+			new ExecutionVertex[] { vertex1 },
+			new ExecutionVertex[] { vertex1 },
 			new StandaloneCheckpointIDCounter(),
 			store,
 			new MemoryStateBackend(),
@@ -2301,7 +2336,9 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			arrayExecutionVertices,
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						arrayExecutionVertices),
 			arrayExecutionVertices,
 			arrayExecutionVertices,
 			new StandaloneCheckpointIDCounter(),
@@ -2559,9 +2596,11 @@ public class CheckpointCoordinatorTest extends TestLogger {
 		return new CheckpointCoordinator(
 				jobId,
 				chkConfig,
-				new ExecutionVertex[]{vertex1, vertex2},
-				new ExecutionVertex[]{vertex1, vertex2},
-				new ExecutionVertex[]{vertex1, vertex2},
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[] { vertex1, vertex2 }),
+				new ExecutionVertex[] { vertex1, vertex2 },
+				new ExecutionVertex[] { vertex1, vertex2 },
 				new StandaloneCheckpointIDCounter(),
 				new StandaloneCompletedCheckpointStore(1),
 				new MemoryStateBackend(),

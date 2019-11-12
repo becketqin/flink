@@ -24,6 +24,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 /**
@@ -34,26 +35,16 @@ public class ExecutorNotifier {
 	private static final Logger LOG = LoggerFactory.getLogger(ExecutorNotifier.class);
 	private ScheduledExecutorService workerExecutor;
 	private Executor executorToNotify;
-	private Runnable onNotificationAction;
 
 	public ExecutorNotifier(ScheduledExecutorService workerExecutor,
-							Executor executorToNotify,
-							Runnable onNotificationAction) {
-		this.onNotificationAction = onNotificationAction;
+							Executor executorToNotify) {
 		this.executorToNotify = executorToNotify;
 		this.workerExecutor = workerExecutor;
 	}
 
 	/**
-	 * Notify the {@link #executorToNotify} to execute the onNotificationAction.
-	 */
-	public void notifyReady() {
-		executorToNotify.execute(onNotificationAction);
-	}
-
-	/**
 	 * Call the given callable once. Notify the {@link #executorToNotify} to execute
-	 * the onNotificationAction when the handler returns true.
+	 * the handler.
 	 *
 	 * <p>It is important to make sure that the callable and handler does not modify
 	 * any shared state. Otherwise there might be unexpected behavior. For example, the
@@ -68,7 +59,7 @@ public class ExecutorNotifier {
 	 * 		// The callable adds an integer 1 to the list, while it works at the first glance,
 	 * 		// A ConcurrentModificationException may be thrown if the callable is called while the
 	 * 		// executorToNotify is running its onNotificationAction.
-	 * 		notifier.notifyReadyAsync(() -> list.add(1), (ignoredValue, ignoredThrowable) -> true);
+	 * 		notifier.notifyReadyAsync(() -> list.add(1), (ignoredValue, ignoredThrowable) -> {});
 	 * 	}
 	 * </pre>
 	 *
@@ -83,18 +74,14 @@ public class ExecutorNotifier {
 	 * @param callable the callable to invoke before notifying the executor.
 	 * @param handler the handler to handle the result of the callable.
 	 */
-	public <T> void notifyReadyAsync(Callable<T> callable, BiFunction<T, Throwable, Boolean> handler) {
+	public <T> void notifyReadyAsync(Callable<T> callable, BiConsumer<T, Throwable> handler) {
 		workerExecutor.execute(() -> {
 			try {
 				T result = callable.call();
-				executorToNotify.execute(() -> {
-					if (handler.apply(result, null)) {
-						executorToNotify.execute(onNotificationAction);
-					}
-				});
+				executorToNotify.execute(() -> handler.accept(result, null));
 			} catch (Throwable t) {
 				LOG.error("Unexpected exception {}", t);
-				handler.apply(null, t);
+				handler.accept(null, t);
 			}
 		});
 	}
@@ -116,7 +103,7 @@ public class ExecutorNotifier {
 	 * 		// The callable adds an integer 1 to the list, while it works at the first glance,
 	 * 		// A ConcurrentModificationException may be thrown if the callable is called while the
 	 * 		// executorToNotify is running its onNotificationAction.
-	 * 		notifier.notifyReadyAsync(() -> list.add(1), (ignoredValue, ignoredThrowable) -> true, 0L, 100L);
+	 * 		notifier.notifyReadyAsync(() -> list.add(1), (ignoredValue, ignoredThrowable) -> {}, 0L, 100L);
 	 * 	}
 	 * </pre>
 	 *
@@ -134,19 +121,15 @@ public class ExecutorNotifier {
 	 * @param periodMs the interval in ms to invoke the callable.
 	 */
 	public <T> void notifyReadyAsync(Callable<T> callable,
-									 BiFunction<T, Throwable, Boolean> handler,
+									 BiConsumer<T, Throwable> handler,
 									 long initialDelayMs,
 									 long periodMs) {
 		workerExecutor.scheduleAtFixedRate(() -> {
 			try {
 				T result = callable.call();
-				executorToNotify.execute(() -> {
-					if (handler.apply(result, null)) {
-						executorToNotify.execute(onNotificationAction);
-					}
-				});
+				executorToNotify.execute(() -> handler.accept(result, null));
 			} catch (Throwable t) {
-				handler.apply(null, t);
+				handler.accept(null, t);
 			}
 		}, initialDelayMs, periodMs, TimeUnit.MILLISECONDS);
 	}

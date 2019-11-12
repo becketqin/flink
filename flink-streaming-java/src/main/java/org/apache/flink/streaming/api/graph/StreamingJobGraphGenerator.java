@@ -21,6 +21,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.functions.Function;
 import org.apache.flink.api.common.operators.ResourceSpec;
+import org.apache.flink.api.common.operators.util.UserCodeObjectWrapper;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.IllegalConfigurationException;
@@ -36,6 +37,7 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.JobVertex;
 import org.apache.flink.runtime.jobgraph.JobVertexID;
 import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.runtime.jobgraph.SourceVertex;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.jobgraph.tasks.JobCheckpointingSettings;
@@ -50,6 +52,7 @@ import org.apache.flink.streaming.api.checkpoint.WithMasterCheckpointHook;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.operators.InputSelectable;
+import org.apache.flink.streaming.api.operators.SourceReaderOperator;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.UdfStreamOperatorFactory;
 import org.apache.flink.streaming.api.transformations.ShuffleMode;
@@ -411,6 +414,9 @@ public class StreamingJobGraphGenerator {
 		}
 
 		if (chainedInputOutputFormats.containsKey(streamNodeId)) {
+			// For stream nodes with InputFormat / OutputFormat, use a InputOutputFormatVertex to
+			// perform initialization and cleanup action in the JobMaster. This is used by
+			// Sources prior to FLIP-27.
 			jobVertex = new InputOutputFormatVertex(
 					chainedNames.get(streamNodeId),
 					jobVertexId,
@@ -421,6 +427,18 @@ public class StreamingJobGraphGenerator {
 			chainedInputOutputFormats
 				.get(streamNodeId)
 				.write(new TaskConfig(jobVertex.getConfiguration()));
+		} else if (streamNode.getOperator() instanceof SourceReaderOperator) {
+			// Use SourceVertex if the operator is a Source, because the SplitEnumerator needs to be
+			// instantiated in the JobMaster. This is used by Sources after FLIP-27.
+			SourceReaderOperator sourceReaderOperator = (SourceReaderOperator) streamNode.getOperator();
+			jobVertex = new SourceVertex(
+					chainedNames.get(streamNodeId),
+					jobVertexId,
+					legacyJobVertexIds,
+					chainedOperatorVertexIds,
+					userDefinedChainedOperatorVertexIds);
+			new TaskConfig(jobVertex.getConfiguration())
+					.setStubWrapper(new UserCodeObjectWrapper<>(sourceReaderOperator.getSource()));
 		} else {
 			jobVertex = new JobVertex(
 					chainedNames.get(streamNodeId),

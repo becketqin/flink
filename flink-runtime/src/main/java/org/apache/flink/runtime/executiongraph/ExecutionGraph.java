@@ -25,6 +25,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.accumulators.Accumulator;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.JobManagerOptions;
 import org.apache.flink.metrics.Counter;
@@ -78,6 +79,8 @@ import org.apache.flink.runtime.scheduler.strategy.SchedulingResultPartition;
 import org.apache.flink.runtime.scheduler.strategy.SchedulingTopology;
 import org.apache.flink.runtime.shuffle.NettyShuffleMaster;
 import org.apache.flink.runtime.shuffle.ShuffleMaster;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
+import org.apache.flink.runtime.source.coordinator.SourceCoordinator;
 import org.apache.flink.runtime.state.SharedStateRegistry;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.runtime.taskmanager.DispatcherThreadFactory;
@@ -559,7 +562,8 @@ public class ExecutionGraph implements AccessExecutionGraph {
 		checkState(state == JobStatus.CREATED, "Job must be in CREATED state");
 		checkState(checkpointCoordinator == null, "checkpointing already enabled");
 
-		ExecutionVertex[] tasksToTrigger = collectExecutionVertices(verticesToTrigger);
+		Map<SourceCoordinator, ExecutionVertex[]> tasksToTrigger =
+				collectVerticesToTriggerCheckpoint(verticesToTrigger);
 		ExecutionVertex[] tasksToWaitFor = collectExecutionVertices(verticesToWaitFor);
 		ExecutionVertex[] tasksToCommitTo = collectExecutionVertices(verticesToCommitTo);
 
@@ -650,6 +654,29 @@ public class ExecutionGraph implements AccessExecutionGraph {
 		}
 	}
 
+	private Map<SourceCoordinator, ExecutionVertex[]> collectVerticesToTriggerCheckpoint(
+			List<ExecutionJobVertex> jobVertices) {
+		Map<SourceCoordinator, ExecutionVertex[]> verticesToTriggerCheckpoint = new HashMap<>(jobVertices.size());
+		List<ExecutionVertex> executionVerticesForDummyCoordinator = new ArrayList<>();
+		for (ExecutionJobVertex jv : jobVertices) {
+			if (jv.getGraph() != this) {
+				throw new IllegalArgumentException("Can only use ExecutionJobVertices of this ExecutionGraph");
+			}
+			if (!(jv.getSourceCoordinator() instanceof DummySourceCoordinator)) {
+				verticesToTriggerCheckpoint.put(jv.getSourceCoordinator(), jv.getTaskVertices());
+			} else {
+				// Put all the vertices without a source coordinator under the dummy coordinator.
+				executionVerticesForDummyCoordinator.addAll(Arrays.asList(jv.getTaskVertices()));
+			}
+		}
+		if (!executionVerticesForDummyCoordinator.isEmpty()) {
+			verticesToTriggerCheckpoint.put(
+					DummySourceCoordinator.INSTANCE,
+					executionVerticesForDummyCoordinator.toArray(new ExecutionVertex[0]));
+		}
+		return verticesToTriggerCheckpoint;
+	}
+
 	private ExecutionVertex[] collectExecutionVertices(List<ExecutionJobVertex> jobVertices) {
 		if (jobVertices.size() == 1) {
 			ExecutionJobVertex jv = jobVertices.get(0);
@@ -666,7 +693,7 @@ public class ExecutionGraph implements AccessExecutionGraph {
 				}
 				all.addAll(Arrays.asList(jv.getTaskVertices()));
 			}
-			return all.toArray(new ExecutionVertex[all.size()]);
+			return all.toArray(new ExecutionVertex[0]);
 		}
 	}
 

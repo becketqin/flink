@@ -27,6 +27,7 @@ import org.apache.flink.runtime.jobgraph.JobStatus;
 import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.CheckpointCoordinatorConfiguration;
 import org.apache.flink.runtime.messages.checkpoint.AcknowledgeCheckpoint;
+import org.apache.flink.runtime.source.coordinator.DummySourceCoordinator;
 import org.apache.flink.runtime.state.KeyedStateHandle;
 import org.apache.flink.runtime.state.OperatorStateHandle;
 import org.apache.flink.runtime.state.OperatorStreamStateHandle;
@@ -39,6 +40,7 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -90,7 +92,9 @@ public class CheckpointCoordinatorFailureTest extends TestLogger {
 		CheckpointCoordinator coord = new CheckpointCoordinator(
 			jid,
 			chkConfig,
-			new ExecutionVertex[]{vertex},
+				Collections.singletonMap(
+						DummySourceCoordinator.INSTANCE,
+						new ExecutionVertex[]{vertex}),
 			new ExecutionVertex[]{vertex},
 			new ExecutionVertex[]{vertex},
 			new StandaloneCheckpointIDCounter(),

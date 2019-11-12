@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 /**
@@ -44,9 +45,9 @@ public interface SplitEnumeratorContext<SplitT extends SourceSplit> {
 	 *
 	 * @param subtaskId the subtask id of the source reader to send this event to.
 	 * @param event the source event to send.
-	 * @return a completable future which tells the result of the sending.
+	 * @return a completable future which will be completed when the event is successfully sent.
 	 */
-	CompletableFuture<Boolean> sendEventToSourceReader(int subtaskId, SourceEvent event);
+	CompletableFuture<Void> sendEventToSourceReader(int subtaskId, SourceEvent event);
 
 	/**
 	 * Get the number of subtasks.
@@ -77,11 +78,6 @@ public interface SplitEnumeratorContext<SplitT extends SourceSplit> {
 	void assignSplits(SplitsAssignment<SplitT> newSplitAssignments);
 
 	/**
-	 * Notify the source coordinator that a new assignment is ready.
-	 */
-	void notifyNewAssignment();
-
-	/**
 	 * Invoke the callable and checks its return value. If the return value is true then
 	 * notify the source coordinator that a new split assignment is available.
 	 *
@@ -91,7 +87,7 @@ public interface SplitEnumeratorContext<SplitT extends SourceSplit> {
 	 * @param callable a callable to call.
 	 * @param handler a handler that handles the return value of or the exception thrown from the callable.
 	 */
-	<T> void notifyNewAssignmentAsync(Callable<T> callable, BiFunction<T, Throwable, Boolean> handler);
+	<T> void assignSplitAsync(Callable<T> callable, BiConsumer<T, Throwable> handler);
 
 	/**
 	 * Invoke the callable periodically and checks its return value. If the return value is
@@ -105,8 +101,8 @@ public interface SplitEnumeratorContext<SplitT extends SourceSplit> {
 	 * @param initialDelay the initial delay of calling the callable.
 	 * @param period the period between two invocations of the callable.
 	 */
-	<T> void notifyNewAssignmentAsync(Callable<T> callable,
-									  BiFunction<T, Throwable, Boolean> handler,
-									  long initialDelay,
-									  long period);
+	<T> void assignSplitAsync(Callable<T> callable,
+							  BiConsumer<T, Throwable> handler,
+							  long initialDelay,
+							  long period);
 }
