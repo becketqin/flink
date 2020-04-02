@@ -40,9 +40,9 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * A subclass of {@link StreamTask} for executing the {@link SourceOperator}.
  */
 @Internal
-public class SourceReaderStreamTask<T> extends StreamTask<T, SourceOperator<T, ?>> {
+public class SourceOperatorStreamTask<T> extends StreamTask<T, SourceOperator<T, ?>> {
 
-	public SourceReaderStreamTask(Environment env) throws Exception {
+	public SourceOperatorStreamTask(Environment env) throws Exception {
 		super(env);
 	}
 

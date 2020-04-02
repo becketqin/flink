@@ -51,7 +51,7 @@ import static org.junit.Assert.assertEquals;
  * Tests for verifying that the {@link SourceOperator} as a task input can be integrated
  * well with {@link org.apache.flink.streaming.runtime.io.StreamOneInputProcessor}.
  */
-public class SourceReaderStreamTaskTest {
+public class SourceOperatorStreamTaskTest {
 	private static final OperatorID OPERATOR_ID = new OperatorID();
 	private static final int NUM_RECORDS = 10;
 
@@ -131,7 +131,7 @@ public class SourceReaderStreamTaskTest {
 				new SourceOperator<>(new MockSource(Boundedness.BOUNDED, 1));
 		// build a test harness.
 		MultipleInputStreamTaskTestHarnessBuilder<Integer> builder =
-				new MultipleInputStreamTaskTestHarnessBuilder<>(SourceReaderStreamTask::new, BasicTypeInfo.INT_TYPE_INFO);
+				new MultipleInputStreamTaskTestHarnessBuilder<>(SourceOperatorStreamTask::new, BasicTypeInfo.INT_TYPE_INFO);
 		if (snapshot != null) {
 			// Set initial snapshot if needed.
 			builder.setTaskStateSnapshot(checkpointId, snapshot);
