@@ -58,7 +58,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <OUT> The output type of the operator.
  */
 @Internal
-public class SourceReaderOperator<OUT, SplitT extends SourceSplit>
+public class SourceOperator<OUT, SplitT extends SourceSplit>
 		extends AbstractStreamOperator<OUT>
 		implements CoordinatedOperator, PushingAsyncDataInput<OUT> {
 	// Package private for unit test.
@@ -77,11 +77,11 @@ public class SourceReaderOperator<OUT, SplitT extends SourceSplit>
 	private transient ListState<byte[]> readerState;
 	private transient OperatorEventGateway operatorEventGateway;
 
-	public SourceReaderOperator(Source<OUT, SplitT, ?> source) {
+	public SourceOperator(Source<OUT, SplitT, ?> source) {
 		this(new OperatorID(), source, 1);
 	}
 
-	public SourceReaderOperator(OperatorID operatorID, Source<OUT, SplitT, ?> source, int numWorkerThread) {
+	public SourceOperator(OperatorID operatorID, Source<OUT, SplitT, ?> source, int numWorkerThread) {
 		this.source = source;
 		this.coordinatorProvider = new SourceCoordinatorProvider<>(operatorID, source, numWorkerThread);
 	}
