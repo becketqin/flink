@@ -34,9 +34,9 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @Internal
 public final class StreamTaskSourceInput<T> implements StreamTaskInput<T> {
 
-	private final SourceReaderOperator<T> operator;
+	private final SourceReaderOperator<T, ?> operator;
 
-	public StreamTaskSourceInput(SourceReaderOperator<T> operator) {
+	public StreamTaskSourceInput(SourceReaderOperator<T, ?> operator) {
 		this.operator = checkNotNull(operator);
 	}
 

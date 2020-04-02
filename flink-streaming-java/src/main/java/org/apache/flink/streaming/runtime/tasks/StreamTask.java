@@ -43,6 +43,7 @@ import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.metrics.groups.OperatorMetricGroup;
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
+import org.apache.flink.runtime.operators.coordination.OperatorEventGateway;
 import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.runtime.state.CheckpointStorageWorkerView;
 import org.apache.flink.runtime.state.CheckpointStreamFactory;
@@ -54,6 +55,7 @@ import org.apache.flink.runtime.util.FatalExitExceptionHandler;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
+import org.apache.flink.streaming.api.operators.CoordinatedOperator;
 import org.apache.flink.streaming.api.operators.MailboxExecutor;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
@@ -414,6 +416,18 @@ public abstract class StreamTask<OUT, OP extends StreamOperator<OUT>>
 		LOG.debug("Initializing {}.", getName());
 
 		operatorChain = new OperatorChain<>(this, recordWriter);
+		// Setup the coordinated operators.
+		operatorChain.getAllOperators().forEach(op -> {
+			if (op.getStreamOperator() instanceof CoordinatedOperator) {
+				CoordinatedOperator coordinatedOp = (CoordinatedOperator) op.getStreamOperator();
+				OperatorEventGateway eventGateway = operatorChain
+						.getOperatorEventDispatcher()
+						.registerEventHandler(
+								op.getStreamOperator().getOperatorID(),
+								coordinatedOp);
+				coordinatedOp.setOperatorEventGateway(eventGateway);
+			}
+		});
 		headOperator = operatorChain.getHeadOperator();
 
 		// task specific initialization
