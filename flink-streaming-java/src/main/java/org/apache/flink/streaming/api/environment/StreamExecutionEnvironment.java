@@ -32,6 +32,7 @@ import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Source;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.Utils;
@@ -81,6 +82,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.functions.source.StatefulSequenceSource;
 import org.apache.flink.streaming.api.graph.StreamGraph;
 import org.apache.flink.streaming.api.graph.StreamGraphGenerator;
+import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.util.DynamicCodeLoadingException;
 import org.apache.flink.util.ExceptionUtils;
@@ -1609,6 +1611,31 @@ public class StreamExecutionEnvironment {
 
 		final StreamSource<OUT, ?> sourceOperator = new StreamSource<>(function);
 		return new DataStreamSource<>(this, typeInfo, sourceOperator, isParallel, sourceName);
+	}
+
+	/**
+	 * Add a data {@link Source} to the environment to get a {@link DataStream}.
+	 *
+	 * @param source
+	 * 		the user defined source
+	 * @param sourceName
+	 * 		Name of the data source
+	 * @param <OUT>
+	 * 		type of the returned stream
+	 * @return the data stream constructed
+	 */
+	@SuppressWarnings("unchecked")
+	public <OUT> DataStreamSource<OUT> addSource(Source<OUT, ?, ?> source, String sourceName) {
+		TypeInformation<OUT> typeInfo;
+		try {
+			typeInfo = TypeExtractor.createTypeInfo(
+					Source.class,
+					source.getClass(), 0, null, null);
+		} catch (final InvalidTypesException e) {
+			typeInfo = (TypeInformation<OUT>) new MissingTypeInfo(sourceName, e);
+		}
+
+		return new DataStreamSource<>(this, new SourceOperator<>(source), typeInfo, sourceName);
 	}
 
 	/**

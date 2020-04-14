@@ -51,6 +51,8 @@ public class SimpleOperatorFactory<OUT> extends AbstractStreamOperatorFactory<OU
 			return new SimpleOutputFormatOperatorFactory<>((StreamSink) operator);
 		} else if (operator instanceof AbstractUdfStreamOperator) {
 			return new SimpleUdfStreamOperatorFactory<OUT>((AbstractUdfStreamOperator) operator);
+		} else if (operator instanceof CoordinatedOperator) {
+			return new SimpleSourceOperatorFactory((SourceOperator<OUT, ?>) operator);
 		} else {
 			return new SimpleOperatorFactory<>(operator);
 		}

@@ -21,6 +21,8 @@ import org.apache.flink.annotation.Public;
 import org.apache.flink.api.common.operators.util.OperatorValidationUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.operators.SimpleOperatorFactory;
+import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.api.transformations.SourceTransformation;
 
@@ -48,6 +50,19 @@ public class DataStreamSource<T> extends SingleOutputStreamOperator<T> {
 	public DataStreamSource(SingleOutputStreamOperator<T> operator) {
 		super(operator.environment, operator.getTransformation());
 		this.isParallel = true;
+	}
+
+	public DataStreamSource(
+			StreamExecutionEnvironment environment,
+			SourceOperator<T, ?> operator,
+			TypeInformation<T> outTypeInfo,
+			String sourceName) {
+		super(environment,
+				new SourceTransformation<>(
+						sourceName,
+						SimpleOperatorFactory.of(operator),
+						outTypeInfo,
+						environment.getParallelism()));
 	}
 
 	@Override

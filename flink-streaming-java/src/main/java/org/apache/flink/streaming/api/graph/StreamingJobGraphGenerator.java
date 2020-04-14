@@ -44,12 +44,14 @@ import org.apache.flink.runtime.jobgraph.topology.DefaultLogicalTopology;
 import org.apache.flink.runtime.jobgraph.topology.LogicalPipelinedRegion;
 import org.apache.flink.runtime.jobmanager.scheduler.CoLocationGroup;
 import org.apache.flink.runtime.jobmanager.scheduler.SlotSharingGroup;
+import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.util.TaskConfig;
 import org.apache.flink.runtime.state.StateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.checkpoint.WithMasterCheckpointHook;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.operators.ChainingStrategy;
+import org.apache.flink.streaming.api.operators.CoordinatedOperatorFactory;
 import org.apache.flink.streaming.api.operators.InputSelectable;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.UdfStreamOperatorFactory;
@@ -443,6 +445,16 @@ public class StreamingJobGraphGenerator {
 					legacyJobVertexIds,
 					chainedOperatorVertexIds,
 					userDefinedChainedOperatorVertexIds);
+			if (streamNode.getOperatorFactory() instanceof CoordinatedOperatorFactory) {
+				OperatorCoordinator.Provider coordinatorProvider =
+						((CoordinatedOperatorFactory<?>) streamNode.getOperatorFactory()).getCoordinatorProvider();
+				try {
+					jobVertex.addOperatorCoordinator(new SerializedValue<>(coordinatorProvider));
+				} catch (IOException e) {
+					throw new FlinkRuntimeException(String.format(
+							"Coordinator Provider for node %s is not serializable.", chainedNames.get(streamNodeId)));
+				}
+			}
 		}
 
 		jobVertex.setResources(chainedMinResources.get(streamNodeId), chainedPreferredResources.get(streamNodeId));
