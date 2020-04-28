@@ -446,8 +446,9 @@ public class StreamingJobGraphGenerator {
 					chainedOperatorVertexIds,
 					userDefinedChainedOperatorVertexIds);
 			if (streamNode.getOperatorFactory() instanceof CoordinatedOperatorFactory) {
+				OperatorID operatorID = new OperatorID(hashes.get(streamNodeId));
 				OperatorCoordinator.Provider coordinatorProvider =
-						((CoordinatedOperatorFactory<?>) streamNode.getOperatorFactory()).getCoordinatorProvider();
+						((CoordinatedOperatorFactory<?>) streamNode.getOperatorFactory()).getCoordinatorProvider(operatorID);
 				try {
 					jobVertex.addOperatorCoordinator(new SerializedValue<>(coordinatorProvider));
 				} catch (IOException e) {

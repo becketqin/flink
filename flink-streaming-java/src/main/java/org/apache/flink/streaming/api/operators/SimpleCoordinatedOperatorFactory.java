@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.api.operators;
 
+import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 
 /**
@@ -34,7 +35,7 @@ public class SimpleCoordinatedOperatorFactory<OUT>
 	}
 
 	@Override
-	public OperatorCoordinator.Provider getCoordinatorProvider() {
-		return operator.getCoordinatorProvider();
+	public OperatorCoordinator.Provider getCoordinatorProvider(OperatorID operatorID) {
+		return operator.getCoordinatorProvider(operatorID);
 	}
 }

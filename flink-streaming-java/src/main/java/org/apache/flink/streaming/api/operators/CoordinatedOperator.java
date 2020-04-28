@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.api.operators;
 
+import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 import org.apache.flink.runtime.operators.coordination.OperatorEvent;
 import org.apache.flink.runtime.operators.coordination.OperatorEventGateway;
@@ -31,9 +32,10 @@ public interface CoordinatedOperator extends OperatorEventHandler {
 	/**
 	 * Get the operator coordinator provider for this operator.
 	 *
+	 * @param operatorID the id of the operator.
 	 * @return the provider of the {@link CoordinatedOperator} for this operator.
 	 */
-	OperatorCoordinator.Provider getCoordinatorProvider();
+	OperatorCoordinator.Provider getCoordinatorProvider(OperatorID operatorID);
 
 	/**
 	 * Sets the {@link OperatorEventGateway} for sending events to the operator coordinator.

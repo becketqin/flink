@@ -68,7 +68,7 @@ public class SourceOperator<OUT, SplitT extends SourceSplit>
 			new ListStateDescriptor<>("SplitSerializerVersion", Integer.class);
 
 	private final Source<OUT, SplitT, ?> source;
-	private final OperatorCoordinator.Provider coordinatorProvider;
+	private final int numWorkerThread;
 
 	// Fields that will be setup at runtime.
 	private transient SourceReader<OUT, SplitT> sourceReader;
@@ -78,12 +78,12 @@ public class SourceOperator<OUT, SplitT extends SourceSplit>
 	private transient OperatorEventGateway operatorEventGateway;
 
 	public SourceOperator(Source<OUT, SplitT, ?> source) {
-		this(new OperatorID(), source, 1);
+		this(source, 1);
 	}
 
-	public SourceOperator(OperatorID operatorID, Source<OUT, SplitT, ?> source, int numWorkerThread) {
+	public SourceOperator(Source<OUT, SplitT, ?> source, int numWorkerThread) {
 		this.source = source;
-		this.coordinatorProvider = new SourceCoordinatorProvider<>(operatorID, source, numWorkerThread);
+		this.numWorkerThread = numWorkerThread;
 	}
 
 	@Override
@@ -158,8 +158,8 @@ public class SourceOperator<OUT, SplitT extends SourceSplit>
 	}
 
 	@Override
-	public OperatorCoordinator.Provider getCoordinatorProvider() {
-		return coordinatorProvider;
+	public OperatorCoordinator.Provider getCoordinatorProvider(OperatorID operatorID) {
+		return new SourceCoordinatorProvider<>(operatorID, source, numWorkerThread);
 	}
 
 	public void setOperatorEventGateway(OperatorEventGateway operatorEventGateway) {

@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.api.operators;
 
+import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.operators.coordination.OperatorCoordinator;
 
 /**
@@ -28,7 +29,8 @@ public interface CoordinatedOperatorFactory<OUT> extends StreamOperatorFactory<O
 	/**
 	 * Get the {@link OperatorCoordinator.Provider CoordinatorProvider} for the {@link CoordinatedOperator}.
 	 *
+	 * @param operatorID the id of the operator.
 	 * @return the {@link OperatorCoordinator.Provider Coordinator Provider} of the {@link CoordinatedOperator}.
 	 */
-	OperatorCoordinator.Provider getCoordinatorProvider();
+	OperatorCoordinator.Provider getCoordinatorProvider(OperatorID operatorID);
 }
