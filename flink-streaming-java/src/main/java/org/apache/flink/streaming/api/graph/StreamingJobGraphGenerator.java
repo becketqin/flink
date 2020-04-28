@@ -253,7 +253,7 @@ public class StreamingJobGraphGenerator {
 	 */
 	private void setChaining(Map<Integer, byte[]> hashes, List<Map<Integer, byte[]>> legacyHashes, Map<Integer, List<Tuple2<byte[], byte[]>>> chainedOperatorHashes) {
 		for (Integer sourceNodeId : streamGraph.getSourceIDs()) {
-			createChain(sourceNodeId, sourceNodeId, hashes, legacyHashes, 0, chainedOperatorHashes);
+			createChain(sourceNodeId, sourceNodeId, hashes, legacyHashes, 0, chainedOperatorHashes, new ArrayList<>());
 		}
 	}
 
@@ -263,7 +263,8 @@ public class StreamingJobGraphGenerator {
 			Map<Integer, byte[]> hashes,
 			List<Map<Integer, byte[]>> legacyHashes,
 			int chainIndex,
-			Map<Integer, List<Tuple2<byte[], byte[]>>> chainedOperatorHashes) {
+			Map<Integer, List<Tuple2<byte[], byte[]>>> chainedOperatorHashes,
+			List<OperatorCoordinator.Provider> coordinatorProviders) {
 
 		if (!builtVertices.contains(startNodeId)) {
 
@@ -284,12 +285,12 @@ public class StreamingJobGraphGenerator {
 
 			for (StreamEdge chainable : chainableOutputs) {
 				transitiveOutEdges.addAll(
-						createChain(startNodeId, chainable.getTargetId(), hashes, legacyHashes, chainIndex + 1, chainedOperatorHashes));
+						createChain(startNodeId, chainable.getTargetId(), hashes, legacyHashes, chainIndex + 1, chainedOperatorHashes, coordinatorProviders));
 			}
 
 			for (StreamEdge nonChainable : nonChainableOutputs) {
 				transitiveOutEdges.add(nonChainable);
-				createChain(nonChainable.getTargetId(), nonChainable.getTargetId(), hashes, legacyHashes, 0, chainedOperatorHashes);
+				createChain(nonChainable.getTargetId(), nonChainable.getTargetId(), hashes, legacyHashes, 0, chainedOperatorHashes, new ArrayList<>());
 			}
 
 			List<Tuple2<byte[], byte[]>> operatorHashes =
@@ -314,9 +315,32 @@ public class StreamingJobGraphGenerator {
 				getOrCreateFormatContainer(startNodeId).addOutputFormat(currentOperatorId, currentNode.getOutputFormat());
 			}
 
-			StreamConfig config = currentNodeId.equals(startNodeId)
-					? createJobVertex(startNodeId, hashes, legacyHashes, chainedOperatorHashes)
-					: new StreamConfig(new Configuration());
+			// add coordinator to the coordinator list of the current operator chain
+			StreamNode streamNode = streamGraph.getStreamNode(currentNodeId);
+			if (streamNode.getOperatorFactory() instanceof CoordinatedOperatorFactory) {
+				CoordinatedOperatorFactory factory = (CoordinatedOperatorFactory) streamNode.getOperatorFactory();
+				OperatorCoordinator.Provider coordinatorProvider = factory.getCoordinatorProvider(currentOperatorId);
+				coordinatorProviders.add(coordinatorProvider);
+			}
+
+			StreamConfig config;
+			if (currentNodeId.equals(startNodeId)) {
+				config = createJobVertex(startNodeId, hashes, legacyHashes, chainedOperatorHashes);
+				// we created a job vertex for the current operator chain
+				// so we put all coordinators of the chain into the job vertex
+				JobVertex jobVertex = jobVertices.get(startNodeId);
+				try {
+					for (OperatorCoordinator.Provider provider : coordinatorProviders) {
+						System.out.println(provider);
+						jobVertex.addOperatorCoordinator(new SerializedValue<>(provider));
+					}
+				} catch (IOException e) {
+					throw new FlinkRuntimeException(String.format(
+						"Coordinator Provider for node %s is not serializable.", chainedNames.get(currentNodeId)));
+				}
+			} else {
+				config = new StreamConfig(new Configuration());
+			}
 
 			setVertexConfig(currentNodeId, config, chainableOutputs, nonChainableOutputs);
 
@@ -445,17 +469,6 @@ public class StreamingJobGraphGenerator {
 					legacyJobVertexIds,
 					chainedOperatorVertexIds,
 					userDefinedChainedOperatorVertexIds);
-			if (streamNode.getOperatorFactory() instanceof CoordinatedOperatorFactory) {
-				OperatorID operatorID = new OperatorID(hashes.get(streamNodeId));
-				OperatorCoordinator.Provider coordinatorProvider =
-						((CoordinatedOperatorFactory<?>) streamNode.getOperatorFactory()).getCoordinatorProvider(operatorID);
-				try {
-					jobVertex.addOperatorCoordinator(new SerializedValue<>(coordinatorProvider));
-				} catch (IOException e) {
-					throw new FlinkRuntimeException(String.format(
-							"Coordinator Provider for node %s is not serializable.", chainedNames.get(streamNodeId)));
-				}
-			}
 		}
 
 		jobVertex.setResources(chainedMinResources.get(streamNodeId), chainedPreferredResources.get(streamNodeId));
