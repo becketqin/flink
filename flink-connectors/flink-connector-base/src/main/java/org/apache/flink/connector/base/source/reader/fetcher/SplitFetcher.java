@@ -55,6 +55,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 	private FetchTask<E, SplitT> fetchTask;
 	private volatile Thread runningThread;
 	private volatile SplitFetcherTask runningTask = null;
+	private volatile boolean isIdle;
 
 	SplitFetcher(
 			int id,
@@ -69,6 +70,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 		this.assignedSplits = new HashMap<>();
 		this.splitReader = splitReader;
 		this.shutdownHook = shutdownHook;
+		this.isIdle = true;
 		this.wakeUp = new AtomicBoolean(false);
 		this.closed = new AtomicBoolean(false);
 	}
@@ -80,7 +82,12 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 			// Remove the split from the assignments if it is already done.
 			runningThread = Thread.currentThread();
 			this.fetchTask = new FetchTask<>(
-					splitReader, elementsQueue, ids -> ids.forEach(assignedSplits::remove), runningThread);
+					splitReader,
+					elementsQueue,
+					ids -> {
+						ids.forEach(assignedSplits::remove);
+						updateIsIdle();
+					}, runningThread);
 			while (!closed.get()) {
 				runOnce();
 			}
@@ -152,6 +159,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 	 */
 	public void addSplits(List<SplitT> splitsToAdd) {
 		maybeEnqueueTask(new AddSplitsTask<>(splitReader, splitsToAdd, splitChanges, assignedSplits));
+		updateIsIdle();
 		wakeUp(true);
 	}
 
@@ -178,7 +186,7 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 	 * @return true if task queue is not empty, false otherwise.
 	 */
 	boolean isIdle() {
-		return taskQueue.isEmpty() && assignedSplits.isEmpty();
+		return isIdle;
 	}
 
 	/**
@@ -262,5 +270,10 @@ public class SplitFetcher<E, SplitT extends SourceSplit> implements Runnable {
 					"The task queue is full. This is only theoretically possible when really bad thing happens.");
 		}
 		LOG.debug("Enqueued task {}", task);
+	}
+
+	private void updateIsIdle() {
+		// If the task queue is not empty
+		isIdle = taskQueue.isEmpty() && splitChanges.isEmpty() && assignedSplits.isEmpty();
 	}
 }
