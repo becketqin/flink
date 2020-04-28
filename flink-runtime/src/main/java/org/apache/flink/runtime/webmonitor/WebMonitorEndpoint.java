@@ -59,6 +59,7 @@ import org.apache.flink.runtime.rest.handler.job.checkpoints.CheckpointStatistic
 import org.apache.flink.runtime.rest.handler.job.checkpoints.CheckpointStatsCache;
 import org.apache.flink.runtime.rest.handler.job.checkpoints.CheckpointingStatisticsHandler;
 import org.apache.flink.runtime.rest.handler.job.checkpoints.TaskCheckpointStatisticDetailsHandler;
+import org.apache.flink.runtime.rest.handler.job.coordination.ClientCoordinationHandler;
 import org.apache.flink.runtime.rest.handler.job.metrics.AggregatingJobsMetricsHandler;
 import org.apache.flink.runtime.rest.handler.job.metrics.AggregatingSubtasksMetricsHandler;
 import org.apache.flink.runtime.rest.handler.job.metrics.AggregatingTaskManagersMetricsHandler;
@@ -112,6 +113,7 @@ import org.apache.flink.runtime.rest.messages.job.JobDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.job.SubtaskCurrentAttemptDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.job.SubtaskExecutionAttemptAccumulatorsHeaders;
 import org.apache.flink.runtime.rest.messages.job.SubtaskExecutionAttemptDetailsHeaders;
+import org.apache.flink.runtime.rest.messages.job.coordination.ClientCoordinationHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerCustomLogHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerDetailsHeaders;
 import org.apache.flink.runtime.rest.messages.taskmanager.TaskManagerLogFileHeaders;
@@ -533,6 +535,12 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 			timeout,
 			responseHeaders);
 
+		final ClientCoordinationHandler clientCoordinationHandler = new ClientCoordinationHandler(
+			leaderRetriever,
+			timeout,
+			responseHeaders,
+			ClientCoordinationHeaders.getInstance());
+
 		final ShutdownHandler shutdownHandler = new ShutdownHandler(
 			leaderRetriever,
 			timeout,
@@ -596,6 +604,7 @@ public class WebMonitorEndpoint<T extends RestfulGateway> extends RestServerEndp
 		handlers.add(Tuple2.of(rescalingStatusHandler.getMessageHeaders(), rescalingStatusHandler));
 		handlers.add(Tuple2.of(savepointDisposalTriggerHandler.getMessageHeaders(), savepointDisposalTriggerHandler));
 		handlers.add(Tuple2.of(savepointDisposalStatusHandler.getMessageHeaders(), savepointDisposalStatusHandler));
+		handlers.add(Tuple2.of(clientCoordinationHandler.getMessageHeaders(), clientCoordinationHandler));
 
 		// TODO: Remove once the Yarn proxy can forward all REST verbs
 		handlers.add(Tuple2.of(YarnCancelJobTerminationHeaders.getInstance(), jobCancelTerminationHandler));
