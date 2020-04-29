@@ -24,6 +24,8 @@ import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.SqlParserException;
 import org.apache.flink.table.api.Table;
@@ -97,10 +99,16 @@ import org.apache.flink.table.operations.utils.OperationTreeBuilder;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.TableSourceValidation;
+import org.apache.flink.table.utils.collect.AbstractTableCollectPlaceHolderSink;
+import org.apache.flink.table.utils.collect.BatchTableCollectPlaceHolderSink;
+import org.apache.flink.table.utils.collect.StreamTableCollectPlaceHolderSink;
+import org.apache.flink.types.Row;
+import org.apache.flink.util.AbstractID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -131,6 +139,8 @@ public class TableEnvironmentImpl implements TableEnvironment {
 			"INSERT, CREATE TABLE, DROP TABLE, ALTER TABLE, USE CATALOG, USE [CATALOG.]DATABASE, " +
 			"CREATE DATABASE, DROP DATABASE, ALTER DATABASE, CREATE FUNCTION, " +
 			"DROP FUNCTION, ALTER FUNCTION";
+
+	private final boolean isStreamingMode;
 
 	/**
 	 * Provides necessary methods for {@link ConnectTableDescriptor}.
@@ -182,6 +192,8 @@ public class TableEnvironmentImpl implements TableEnvironment {
 			},
 			isStreamingMode
 		);
+
+		this.isStreamingMode = isStreamingMode;
 	}
 
 	public static TableEnvironmentImpl create(EnvironmentSettings settings) {
@@ -717,6 +729,30 @@ public class TableEnvironmentImpl implements TableEnvironment {
 	public JobExecutionResult execute(String jobName) throws Exception {
 		Pipeline pipeline = execEnv.createPipeline(translateAndClearBuffer(), tableConfig, jobName);
 		return execEnv.execute(pipeline);
+	}
+
+	@Override
+	public Iterator<Tuple2<Boolean, Row>> collect(Table table) throws Exception {
+		String id = new AbstractID().toString();
+		String tableName = table.toString();
+		String sinkName = "tableCollectSink_" + tableName + "_" + id;
+		String jobName = "tableCollect_" + tableName + "_" + id;
+		String accumulatorName = "tableCollectAccumulator_" + tableName + "_" + id;
+
+		AbstractTableCollectPlaceHolderSink sink;
+		// TODO add maxResultsPerBatch config
+		if (isStreamingMode) {
+			sink = new StreamTableCollectPlaceHolderSink(table.getSchema(), 10, accumulatorName);
+		} else {
+			sink = new BatchTableCollectPlaceHolderSink(table.getSchema(), 10, accumulatorName);
+		}
+		registerTableSink(sinkName, sink);
+		table.insertInto(sinkName);
+
+		Pipeline pipeline = execEnv.createPipeline(translateAndClearBuffer(), tableConfig, jobName);
+		JobClient jobClient = execEnv.executeAsync(pipeline);
+		dropTemporaryTable(sinkName);
+		return sink.getIterator().configure(jobClient);
 	}
 
 	/**

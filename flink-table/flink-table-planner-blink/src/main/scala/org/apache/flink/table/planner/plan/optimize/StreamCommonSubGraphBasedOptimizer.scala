@@ -35,6 +35,7 @@ import org.apache.flink.table.planner.sinks.DataStreamTableSink
 import org.apache.flink.table.planner.utils.TableConfigUtils
 import org.apache.flink.table.planner.utils.TableConfigUtils.getMillisecondFromConfigDuration
 import org.apache.flink.table.sinks.RetractStreamTableSink
+import org.apache.flink.table.utils.collect.StreamTableCollectPlaceHolderSink
 import org.apache.flink.util.Preconditions
 
 import org.apache.calcite.rel.RelNode
@@ -63,6 +64,7 @@ class StreamCommonSubGraphBasedOptimizer(planner: StreamPlanner)
           n.sink match {
             case _: RetractStreamTableSink[_] => true
             case s: DataStreamTableSink[_] => s.updatesAsRetraction
+            case _: StreamTableCollectPlaceHolderSink => true
             case _ => false
           }
         case o =>

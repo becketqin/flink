@@ -1,0 +1,276 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.flink.streaming.api.operators.collect;
+
+import org.apache.flink.annotation.Experimental;
+import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.accumulators.SerializedListAccumulator;
+import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.memory.DataInputViewStreamWrapper;
+import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
+import org.apache.flink.runtime.operators.coordination.OperatorEventGateway;
+import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
+import org.apache.flink.streaming.runtime.tasks.StreamTask;
+import org.apache.flink.util.Preconditions;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * A sink function that collects query results and sends them back to the client.
+ *
+ * <p>This sink works by limiting the number of results buffered in it (can be configured) so
+ * that when the buffer is full, it back-pressures the job until the client consumes some results.
+ *
+ * NOTE: When using this sink, make sure that its parallelism is 1, and make sure that it is used
+ * in a {@link StreamTask}.
+ *
+ * @param <IN> type of results to be written into the sink.
+ */
+@Experimental
+@Internal
+public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
+
+	private static final Logger LOG = LoggerFactory.getLogger(CollectSinkFunction.class);
+
+	private final TypeSerializer<IN> serializer;
+	private final LinkedList<IN> bufferedResults;
+	private final int maxResultsPerBatch;
+	private final int maxResultsBuffered;
+	private final String finalResultAccumulatorName;
+
+	private final ReentrantLock bufferedResultsLock;
+	private final Condition bufferNotFullCondition;
+
+	private OperatorEventGateway eventGateway;
+
+	private String version;
+	private long firstBufferedResultToken;
+	private ServerThread serverThread;
+
+	public CollectSinkFunction(
+			TypeSerializer<IN> serializer,
+			int maxResultsPerBatch,
+			String finalResultAccumulatorName) {
+		this.serializer = serializer;
+		this.bufferedResults = new LinkedList<>();
+		this.maxResultsPerBatch = maxResultsPerBatch;
+		this.maxResultsBuffered = maxResultsPerBatch * 2;
+		this.finalResultAccumulatorName = finalResultAccumulatorName;
+
+		this.bufferedResultsLock = new ReentrantLock();
+		this.bufferNotFullCondition = bufferedResultsLock.newCondition();
+	}
+
+	@Override
+	public void open(Configuration parameters) throws Exception {
+		Preconditions.checkState(
+			getRuntimeContext().getNumberOfParallelSubtasks() == 1,
+			"The parallelism of SocketServerSink must be 1");
+
+		// generate a random uuid when the sink is opened
+		// so that the client can know if the sink has been restarted
+		version = UUID.randomUUID().toString();
+		firstBufferedResultToken = 0;
+		serverThread = new ServerThread();
+		serverThread.start();
+
+		// sending socket server address to coordinator
+		Preconditions.checkNotNull(eventGateway, "Operator event gateway hasn't been set");
+		InetSocketAddress address = serverThread.getServerSocketAddress();
+		LOG.info("Collect sink server established, address = " + address);
+
+		CollectSinkAddressEvent addressEvent = new CollectSinkAddressEvent(address);
+		eventGateway.sendEventToCoordinator(addressEvent);
+	}
+
+	@Override
+	public void invoke(IN value, Context context) throws Exception {
+		try {
+			bufferedResultsLock.lock();
+			if (bufferedResults.size() >= maxResultsBuffered) {
+				bufferNotFullCondition.await();
+			}
+			bufferedResults.add(value);
+		} finally {
+			bufferedResultsLock.unlock();
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		bufferedResultsLock.lock();
+		// put results not consumed by the client into the accumulator
+		// so that we do not block the closing procedure while not throwing results away
+		//
+		// NOTE: we do not unblock invoke method,
+		// because if the close method is called when the invoke method is blocking,
+		// then the job does not terminate normally, in this case we do not guarantee to return all results
+		SerializedListAccumulator<IN> accumulator = new SerializedListAccumulator<>();
+		for (IN result : bufferedResults) {
+			accumulator.add(result, serializer);
+		}
+		getRuntimeContext().addAccumulator(finalResultAccumulatorName, accumulator);
+		bufferedResultsLock.unlock();
+		serverThread.close();
+	}
+
+	public void setOperatorEventGateway(OperatorEventGateway eventGateway) {
+		this.eventGateway = eventGateway;
+	}
+
+	/**
+	 * The thread that runs the socket server.
+	 */
+	private class ServerThread extends Thread {
+
+		private final ServerSocket serverSocket;
+
+		private boolean running;
+
+		private Socket connection;
+		private DataInputViewStreamWrapper inStream;
+		private DataOutputViewStreamWrapper outStream;
+
+		ServerThread() throws Exception {
+			this.serverSocket = new ServerSocket(0);
+			this.running = true;
+		}
+
+		@Override
+		public void run() {
+			while (running) {
+				try {
+					if (connection == null) {
+						// waiting for coordinator to connect
+						connection = serverSocket.accept();
+						LOG.debug("Coordinator connection received");
+
+						inStream = new DataInputViewStreamWrapper(this.connection.getInputStream());
+						outStream = new DataOutputViewStreamWrapper(this.connection.getOutputStream());
+					}
+
+					CollectCoordinationRequest.DeserializedRequest request =
+						CollectCoordinationRequest.deserialize(inStream);
+					String version = request.getVersion();
+					long token = request.getToken();
+					LOG.debug("Request received, version = " + version + ", token = " + token);
+
+					String expectedVersion = CollectSinkFunction.this.version;
+					long firstBufferedToken = CollectSinkFunction.this.firstBufferedResultToken;
+					LOG.debug(
+						"Expecting version = " + expectedVersion + ", firstBufferedToken = " + firstBufferedToken);
+
+					if (!expectedVersion.equals(version) || token < firstBufferedResultToken) {
+						// invalid request
+						LOG.debug("Invalid request");
+						sendBufferedResults(0, 0);
+						continue;
+					}
+
+					// valid request, sending out results
+					bufferedResultsLock.lock();
+
+					int oldSize = bufferedResults.size();
+					int start = Math.min((int) (token - firstBufferedResultToken), oldSize);
+					int end = Math.min(start + maxResultsPerBatch, oldSize);
+					LOG.debug("Sending back " + (end - start) + " results");
+					sendBufferedResults(start, end - start);
+
+					if (oldSize >= maxResultsBuffered && bufferedResults.size() < maxResultsBuffered) {
+						bufferNotFullCondition.signal();
+					}
+					bufferedResultsLock.unlock();
+				} catch (IOException e) {
+					// IOException occurs, just close current connection
+					// client will come with the same token if it needs the same batch of results
+					LOG.debug("Collect sink server encounters an exception", e);
+					closeCurrentConnection();
+				}
+			}
+		}
+
+		public void close() {
+			running = false;
+			closeCurrentConnection();
+			closeServer();
+		}
+
+		public InetSocketAddress getServerSocketAddress() {
+			RuntimeContext context = getRuntimeContext();
+			Preconditions.checkState(
+				context instanceof StreamingRuntimeContext,
+				"CollectSinkFunction can only be used in StreamTask");
+			StreamingRuntimeContext streamingContext = (StreamingRuntimeContext) context;
+			String taskManagerAddress = streamingContext.getTaskManagerRuntimeInfo().getTaskManagerAddress();
+			return new InetSocketAddress(taskManagerAddress, serverSocket.getLocalPort());
+		}
+
+		private void sendBufferedResults(int offset, int length) throws IOException {
+			// skip `offset` results
+			for (int i = 0; i < offset; i++) {
+				bufferedResults.removeFirst();
+				firstBufferedResultToken++;
+			}
+
+			// send out `length` results
+			long token = firstBufferedResultToken;
+			List<IN> results = new ArrayList<>(length);
+			for (int i = 0; i < length; i++) {
+				results.add(bufferedResults.removeFirst());
+				firstBufferedResultToken++;
+			}
+			byte[] bytes = CollectCoordinationResponse.serialize(version, token, results, serializer);
+			outStream.writeInt(bytes.length);
+			outStream.write(bytes);
+		}
+
+		private void closeCurrentConnection() {
+			try {
+				if (connection != null) {
+					connection.close();
+					connection = null;
+				}
+			} catch (Exception e) {
+				LOG.warn("Error occurs when closing client connections in SocketServerSink", e);
+			}
+		}
+
+		private void closeServer() {
+			try {
+				serverSocket.close();
+			} catch (Exception e) {
+				LOG.warn("Error occurs when closing server in SocketServerSink", e);
+			}
+		}
+	}
+}

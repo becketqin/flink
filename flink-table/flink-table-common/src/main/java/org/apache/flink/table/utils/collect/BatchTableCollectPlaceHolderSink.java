@@ -16,34 +16,29 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils;
+package org.apache.flink.table.utils.collect;
 
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.dag.Pipeline;
-import org.apache.flink.api.dag.Transformation;
-import org.apache.flink.core.execution.JobClient;
-import org.apache.flink.table.api.TableConfig;
-import org.apache.flink.table.delegation.Executor;
-
-import java.util.List;
+import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.types.Row;
 
 /**
- * Mocking {@link Executor} for tests.
+ * A place holder sink for retrieving query results of batch jobs to the client.
+ * It will be changed into dedicated sink operators in planners.
  */
-public class ExecutorMock implements Executor {
+@Internal
+public class BatchTableCollectPlaceHolderSink extends AbstractTableCollectPlaceHolderSink<Row> {
 
-	@Override
-	public Pipeline createPipeline(List<Transformation<?>> transformations, TableConfig tableConfig, String jobName) {
-		return null;
+	public BatchTableCollectPlaceHolderSink(
+			TableSchema schema,
+			int maxResultsPerBatch,
+			String finalResultAccumulatorName) {
+		super(schema, maxResultsPerBatch, finalResultAccumulatorName);
 	}
 
 	@Override
-	public JobExecutionResult execute(Pipeline pipeline) throws Exception {
-		return null;
-	}
-
-	@Override
-	public JobClient executeAsync(Pipeline pipeline) throws Exception {
-		return null;
+	public DataType getConsumedDataType() {
+		return schema.toRowDataType();
 	}
 }

@@ -18,9 +18,13 @@
 
 package org.apache.flink.table.planner.plan.nodes.physical.batch
 
+import org.apache.flink.api.common.ExecutionConfig
+import org.apache.flink.api.common.typeutils.TypeSerializer
 import org.apache.flink.api.dag.Transformation
 import org.apache.flink.runtime.operators.DamBehavior
 import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.operators.collect.{CollectSinkOperator, SimpleCollectSinkOperatorFactory}
+import org.apache.flink.streaming.api.transformations.SinkTransformation
 import org.apache.flink.table.api.TableException
 import org.apache.flink.table.dataformat.BaseRow
 import org.apache.flink.table.planner.codegen.SinkCodeGenerator._
@@ -34,6 +38,8 @@ import org.apache.flink.table.runtime.types.ClassLogicalTypeConverter
 import org.apache.flink.table.runtime.typeutils.BaseRowTypeInfo
 import org.apache.flink.table.sinks.{RetractStreamTableSink, StreamTableSink, TableSink, UpsertStreamTableSink}
 import org.apache.flink.table.types.DataType
+import org.apache.flink.types.Row
+import org.apache.flink.table.utils.collect.{BatchTableCollectIterator, BatchTableCollectPlaceHolderSink}
 
 import org.apache.calcite.plan.{RelOptCluster, RelTraitSet}
 import org.apache.calcite.rel.RelNode
@@ -110,6 +116,25 @@ class BatchExecSink[T](
         // sink, so we do not need to invoke TableSink#emitBoundedStream and set resource, just a
         // translation to Transformation is ok.
         translateToTransformation(withChangeFlag = dsTableSink.withChangeFlag, planner)
+
+      case collectPlaceHolderSink: BatchTableCollectPlaceHolderSink =>
+        val transformation = translateToTransformation(withChangeFlag = false, planner)
+        val outputTypeInfo = transformation.getOutputType
+        val serializer = outputTypeInfo.createSerializer(new ExecutionConfig)
+
+        val operator = new CollectSinkOperator(
+          serializer,
+          collectPlaceHolderSink.getMaxResultsPerBatch,
+          collectPlaceHolderSink.getFinalResultAccumulatorName)
+        val operatorFactory = new SimpleCollectSinkOperatorFactory(operator)
+
+        val iterator = new BatchTableCollectIterator(
+          operator.getOperatorIdFuture,
+          serializer.asInstanceOf[TypeSerializer[Row]],
+          collectPlaceHolderSink.getFinalResultAccumulatorName)
+        collectPlaceHolderSink.setIterator(iterator)
+
+        new SinkTransformation(transformation, "CollectingSink", operatorFactory, 1)
 
       case _ =>
         throw new TableException(s"Only Support StreamTableSink! " +

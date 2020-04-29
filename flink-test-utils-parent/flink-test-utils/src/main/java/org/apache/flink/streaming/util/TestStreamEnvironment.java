@@ -19,6 +19,11 @@
 package org.apache.flink.streaming.util;
 
 import org.apache.flink.api.common.JobExecutionResult;
+import org.apache.flink.api.common.JobSubmissionResult;
+import org.apache.flink.client.deployment.ClusterClientJobClientAdapter;
+import org.apache.flink.client.program.MiniClusterClient;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.minicluster.JobExecutor;
@@ -32,6 +37,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * A {@link StreamExecutionEnvironment} that executes its jobs on {@link MiniCluster}.
@@ -75,6 +81,23 @@ public class TestStreamEnvironment extends StreamExecutionEnvironment {
 		jobGraph.setClasspaths(new ArrayList<>(classPaths));
 
 		return jobExecutor.executeJobBlocking(jobGraph);
+	}
+
+	@Override
+	public JobClient executeAsync(StreamGraph streamGraph) throws Exception {
+		final JobGraph jobGraph = streamGraph.getJobGraph();
+
+		for (Path jarFile : jarFiles) {
+			jobGraph.addJar(jarFile);
+		}
+
+		jobGraph.setClasspaths(new ArrayList<>(classPaths));
+
+		MiniCluster miniCluster = (MiniCluster) jobExecutor;
+		CompletableFuture<JobSubmissionResult> submissionResult = miniCluster.submitJob(jobGraph);
+		return new ClusterClientJobClientAdapter<>(
+			() -> new MiniClusterClient(new Configuration(), miniCluster),
+			submissionResult.get().getJobID());
 	}
 
 	// ------------------------------------------------------------------------

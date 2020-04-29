@@ -18,6 +18,7 @@
 
 package org.apache.flink.runtime.taskexecutor;
 
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.AkkaOptions;
 import org.apache.flink.configuration.ConfigConstants;
@@ -27,6 +28,7 @@ import org.apache.flink.configuration.CoreOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.configuration.UnmodifiableConfiguration;
 import org.apache.flink.runtime.akka.AkkaUtils;
+import org.apache.flink.runtime.clusterframework.types.ResourceID;
 import org.apache.flink.runtime.clusterframework.types.ResourceProfile;
 import org.apache.flink.runtime.execution.librarycache.FlinkUserCodeClassLoaders;
 import org.apache.flink.runtime.registration.RetryingRegistrationConfiguration;
@@ -39,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.time.Duration;
 
 /**
@@ -83,6 +86,8 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 	@Nullable
 	private final String taskManagerLogDir;
 
+	private final String taskManagerAddress;
+
 	private final RetryingRegistrationConfiguration retryingRegistrationConfiguration;
 
 	public TaskManagerConfiguration(
@@ -102,6 +107,7 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 			@Nullable String taskManagerLogPath,
 			@Nullable String taskManagerStdoutPath,
 			@Nullable String taskManagerLogDir,
+			String taskManagerAddress,
 			RetryingRegistrationConfiguration retryingRegistrationConfiguration) {
 
 		this.numberSlots = numberSlots;
@@ -120,6 +126,7 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		this.taskManagerLogPath = taskManagerLogPath;
 		this.taskManagerStdoutPath = taskManagerStdoutPath;
 		this.taskManagerLogDir = taskManagerLogDir;
+		this.taskManagerAddress = taskManagerAddress;
 		this.retryingRegistrationConfiguration = retryingRegistrationConfiguration;
 	}
 
@@ -172,6 +179,11 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 		return exitJvmOnOutOfMemory;
 	}
 
+	@Override
+	public String getTaskManagerAddress() {
+		return taskManagerAddress;
+	}
+
 	public FlinkUserCodeClassLoaders.ResolveOrder getClassLoaderResolveOrder() {
 		return classLoaderResolveOrder;
 	}
@@ -203,9 +215,28 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 	//  Static factory methods
 	// --------------------------------------------------------------------------------------------
 
+	@VisibleForTesting
 	public static TaskManagerConfiguration fromConfiguration(
 			Configuration configuration,
 			TaskExecutorResourceSpec taskExecutorResourceSpec) {
+		try {
+			TaskManagerServicesConfiguration servicesConfiguration =
+				TaskManagerServicesConfiguration.fromConfiguration(
+					configuration,
+					ResourceID.generate(),
+					InetAddress.getLoopbackAddress().getHostAddress(),
+					true,
+					TaskExecutorResourceUtils.resourceSpecFromConfigForLocalExecution(configuration));
+			return fromConfiguration(configuration, taskExecutorResourceSpec, servicesConfiguration);
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to create TaskManagerConfiguration from configuration", e);
+		}
+	}
+
+	public static TaskManagerConfiguration fromConfiguration(
+			Configuration configuration,
+			TaskExecutorResourceSpec taskExecutorResourceSpec,
+			TaskManagerServicesConfiguration servicesConfiguration) {
 		int numberSlots = configuration.getInteger(TaskManagerOptions.NUM_TASK_SLOTS, 1);
 
 		if (numberSlots == -1) {
@@ -306,6 +337,7 @@ public class TaskManagerConfiguration implements TaskManagerRuntimeInfo {
 			taskManagerLogPath,
 			taskManagerStdoutPath,
 			taskManagerLogDir,
+			servicesConfiguration.getExternalAddress(),
 			retryingRegistrationConfiguration);
 	}
 }

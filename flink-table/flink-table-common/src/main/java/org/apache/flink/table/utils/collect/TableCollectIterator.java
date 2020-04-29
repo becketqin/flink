@@ -16,34 +16,19 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils;
+package org.apache.flink.table.utils.collect;
 
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.dag.Pipeline;
-import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.core.execution.JobClient;
-import org.apache.flink.table.api.TableConfig;
-import org.apache.flink.table.delegation.Executor;
+import org.apache.flink.types.Row;
 
-import java.util.List;
+import java.util.Iterator;
 
 /**
- * Mocking {@link Executor} for tests.
+ * An iterator which iterates through the query results.
+ * It must be configured with a {@link JobClient} before first use.
  */
-public class ExecutorMock implements Executor {
+public interface TableCollectIterator extends Iterator<Tuple2<Boolean, Row>> {
 
-	@Override
-	public Pipeline createPipeline(List<Transformation<?>> transformations, TableConfig tableConfig, String jobName) {
-		return null;
-	}
-
-	@Override
-	public JobExecutionResult execute(Pipeline pipeline) throws Exception {
-		return null;
-	}
-
-	@Override
-	public JobClient executeAsync(Pipeline pipeline) throws Exception {
-		return null;
-	}
+	TableCollectIterator configure(JobClient jobClient);
 }

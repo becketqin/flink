@@ -16,34 +16,31 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils;
+package org.apache.flink.table.utils.collect;
 
-import org.apache.flink.api.common.JobExecutionResult;
-import org.apache.flink.api.dag.Pipeline;
-import org.apache.flink.api.dag.Transformation;
-import org.apache.flink.core.execution.JobClient;
-import org.apache.flink.table.api.TableConfig;
-import org.apache.flink.table.delegation.Executor;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.runtime.jobgraph.OperatorID;
+import org.apache.flink.types.Row;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Mocking {@link Executor} for tests.
+ * A {@link TableCollectIterator} for streaming jobs.
  */
-public class ExecutorMock implements Executor {
+public class StreamTableCollectIterator extends AbstractTableCollectIterator<Tuple2<Boolean, Row>> {
 
-	@Override
-	public Pipeline createPipeline(List<Transformation<?>> transformations, TableConfig tableConfig, String jobName) {
-		return null;
+	public StreamTableCollectIterator(
+		CompletableFuture<OperatorID> operatorIdFuture,
+		TypeSerializer<Tuple2<Boolean, Row>> serializer,
+		String finalResultAccumulatorName) {
+		super(operatorIdFuture, serializer, finalResultAccumulatorName);
 	}
 
 	@Override
-	public JobExecutionResult execute(Pipeline pipeline) throws Exception {
-		return null;
-	}
-
-	@Override
-	public JobClient executeAsync(Pipeline pipeline) throws Exception {
-		return null;
+	protected void fetchMoreResults() {
+		List<Tuple2<Boolean, Row>> results = fetchResultsFromCoordinator();
+		bufferedResults.addAll(results);
 	}
 }

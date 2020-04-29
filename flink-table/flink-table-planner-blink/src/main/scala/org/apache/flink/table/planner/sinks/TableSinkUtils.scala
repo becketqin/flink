@@ -38,6 +38,7 @@ import org.apache.flink.table.types.utils.DataTypeUtils
 import org.apache.flink.table.types.utils.TypeConversions.{fromLegacyInfoToDataType, fromLogicalToDataType}
 import org.apache.flink.table.utils.{TableSchemaUtils, TypeMappingUtils}
 import org.apache.flink.types.Row
+import org.apache.flink.table.utils.collect.{BatchTableCollectPlaceHolderSink, StreamTableCollectPlaceHolderSink}
 
 import org.apache.calcite.plan.RelOptUtil
 import org.apache.calcite.rel.RelNode
@@ -158,6 +159,8 @@ object TableSinkUtils {
       case _: RetractStreamTableSink[_] | _: UpsertStreamTableSink[_] => true
       case _: StreamTableSink[_] => false
       case dsts: DataStreamTableSink[_] => dsts.withChangeFlag
+      case _: BatchTableCollectPlaceHolderSink => false
+      case _: StreamTableCollectPlaceHolderSink => true
     }
     inferSinkPhysicalSchema(sink.getConsumedDataType, queryLogicalType, withChangeFlag)
   }

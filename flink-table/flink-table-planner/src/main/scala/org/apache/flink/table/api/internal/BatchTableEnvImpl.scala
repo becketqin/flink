@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobExecutionResult
 import org.apache.flink.api.common.functions.MapFunction
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
+import org.apache.flink.api.java.tuple.Tuple2
 import org.apache.flink.api.java.typeutils.GenericTypeInfo
 import org.apache.flink.api.java.{DataSet, ExecutionEnvironment}
 import org.apache.flink.table.api._
@@ -49,6 +50,8 @@ import org.apache.flink.types.Row
 import org.apache.calcite.plan.RelOptUtil
 import org.apache.calcite.rel.RelNode
 
+import _root_.java.lang
+import _root_.java.util
 import _root_.scala.collection.JavaConverters._
 
 /**
@@ -216,6 +219,8 @@ abstract class BatchTableEnvImpl(
   override def explain(table: Table): String = explain(table: Table, extended = false)
 
   override def execute(jobName: String): JobExecutionResult = execEnv.execute(jobName)
+
+  override def collect(table: Table): util.Iterator[Tuple2[lang.Boolean, Row]] = ???
 
   override def explain(extended: Boolean): String = {
     throw new TableException("This method is unsupported in old planner.")

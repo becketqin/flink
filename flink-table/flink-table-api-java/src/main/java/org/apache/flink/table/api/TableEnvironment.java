@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Experimental;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.table.api.internal.TableEnvironmentImpl;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
@@ -31,8 +32,10 @@ import org.apache.flink.table.functions.UserDefinedFunction;
 import org.apache.flink.table.module.Module;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.types.Row;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.Optional;
 
 /**
@@ -867,4 +870,10 @@ public interface TableEnvironment {
 	 * @throws Exception which occurs during job execution.
 	 */
 	JobExecutionResult execute(String jobName) throws Exception;
+
+	/**
+	 * NOTE: This is a temporal change, will be refactored into TableEnvironment#executeSql
+	 * once FLIP-84 is done.
+	 */
+	Iterator<Tuple2<Boolean, Row>> collect(Table table) throws Exception;
 }

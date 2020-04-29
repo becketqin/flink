@@ -19,27 +19,23 @@
 package org.apache.flink.table.api;
 
 import org.apache.flink.annotation.Experimental;
-import org.apache.flink.api.common.ExecutionConfig;
-import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.accumulators.Accumulator;
-import org.apache.flink.api.common.accumulators.SerializedListAccumulator;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.Utils;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.api.internal.TableImpl;
 import org.apache.flink.table.runtime.types.LogicalTypeDataTypeConverter;
-import org.apache.flink.table.runtime.types.TypeInfoDataTypeConverter;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.TimestampKind;
 import org.apache.flink.table.types.logical.TimestampType;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.AbstractID;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -63,32 +59,12 @@ public class TableUtils {
 	 */
 	public static List<Row> collectToList(Table table) throws Exception {
 		TableEnvironment tEnv = ((TableImpl) table).getTableEnvironment();
-		String id = new AbstractID().toString();
-		TableSchema schema = buildNewTableSchema(table);
-		DataType rowDataType = schema.toRowDataType();
-
-		@SuppressWarnings("unchecked")
-		TypeSerializer<Row> serializer = (TypeSerializer<Row>) TypeInfoDataTypeConverter
-			.fromDataTypeToTypeInfo(rowDataType)
-			.createSerializer(new ExecutionConfig());
-		Utils.CollectHelper<Row> outputFormat = new Utils.CollectHelper<>(id, serializer);
-		TableResultSink sink = new TableResultSink(schema, outputFormat);
-
-		String tableName = table.toString();
-		String sinkName = "tableResultSink_" + tableName + "_" + id;
-		String jobName = "tableResultToList_" + tableName + "_" + id;
-
-		List<Row> deserializedList;
-		try {
-			tEnv.registerTableSink(sinkName, sink);
-			tEnv.insertInto(sinkName, table);
-			JobExecutionResult executionResult = tEnv.execute(jobName);
-			ArrayList<byte[]> accResult = executionResult.getAccumulatorResult(id);
-			deserializedList = SerializedListAccumulator.deserializeList(accResult, serializer);
-		} finally {
-			tEnv.dropTemporaryTable(sinkName);
+		Iterator<Tuple2<Boolean, Row>> iterator = tEnv.collect(table);
+		List<Row> results = new ArrayList<>();
+		while (iterator.hasNext()) {
+			results.add(iterator.next().f1);
 		}
-		return deserializedList;
+		return results;
 	}
 
 	/**

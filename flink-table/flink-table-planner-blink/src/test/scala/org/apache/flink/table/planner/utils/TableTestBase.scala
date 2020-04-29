@@ -20,6 +20,7 @@ package org.apache.flink.table.planner.utils
 import org.apache.flink.api.common.JobExecutionResult
 import org.apache.flink.api.common.typeinfo.{AtomicType, TypeInformation}
 import org.apache.flink.api.java.typeutils.{PojoTypeInfo, RowTypeInfo, TupleTypeInfo}
+import org.apache.flink.api.java.tuple.Tuple2
 import org.apache.flink.api.scala.typeutils.CaseClassTypeInfo
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.environment.{LocalStreamEnvironment, StreamExecutionEnvironment}
@@ -59,17 +60,21 @@ import org.apache.flink.table.sources.{StreamTableSource, TableSource}
 import org.apache.flink.table.types.logical.LogicalType
 import org.apache.flink.table.types.utils.TypeConversions
 import org.apache.flink.table.typeutils.FieldInfoUtils
+import org.apache.flink.table.utils.collect.{BatchTableCollectPlaceHolderSink, StreamTableCollectPlaceHolderSink}
 import org.apache.flink.types.Row
+import org.apache.flink.util.AbstractID
 
 import org.apache.calcite.avatica.util.TimeUnit
 import org.apache.calcite.rel.RelNode
 import org.apache.calcite.sql.parser.SqlParserPos
 import org.apache.calcite.sql.{SqlExplainLevel, SqlIntervalQualifier}
 import org.apache.commons.lang3.SystemUtils
+
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Rule
 import org.junit.rules.{ExpectedException, TemporaryFolder, TestName}
 
+import _root_.java.lang
 import _root_.java.math.{BigDecimal => JBigDecimal}
 import _root_.java.util
 
@@ -1052,6 +1057,30 @@ class TestingTableEnvironment private(
     bufferedOperations.clear()
     val pipeline = executor.createPipeline(transformations, tableConfig, jobName)
     execEnv.execute(pipeline)
+  }
+
+  @throws[Exception]
+  override def collect(table: Table): util.Iterator[Tuple2[lang.Boolean, Row]] = {
+    val id = new AbstractID().toString
+    val tableName = table.toString
+    val sinkName = "tableCollectSink_" + tableName + "_" + id
+    val jobName = "tableCollect_" + tableName + "_" + id
+    val accumulatorName = "tableCollectAccumulator_" + tableName + "_" + id
+
+    val sink = if (isStreamingMode) {
+      new StreamTableCollectPlaceHolderSink(table.getSchema, 3, accumulatorName)
+    } else {
+      new BatchTableCollectPlaceHolderSink(table.getSchema, 3, accumulatorName)
+    }
+    registerTableSink(sinkName, sink)
+    table.insertInto(sinkName)
+
+    val transformations = planner.translate(bufferedOperations)
+    bufferedOperations.clear()
+    val pipeline = executor.createPipeline(transformations, tableConfig, jobName)
+    val jobClient = execEnv.executeAsync(pipeline)
+    dropTemporaryTable(sinkName)
+    sink.getIterator.configure(jobClient)
   }
 
   override def createTable(tableOperation: QueryOperation): TableImpl = {

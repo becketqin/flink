@@ -18,6 +18,8 @@
 
 package org.apache.flink.table.utils
 
+import java.{lang, util}
+
 import org.apache.flink.api.common.JobExecutionResult
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.table.api.{Table, TableConfig, TableEnvironment}
@@ -28,7 +30,9 @@ import org.apache.flink.table.sinks.TableSink
 import org.apache.flink.table.sources.TableSource
 import java.util.Optional
 
+import org.apache.flink.api.java.tuple
 import org.apache.flink.table.module.Module
+import org.apache.flink.types.Row
 
 class MockTableEnvironment extends TableEnvironment {
 
@@ -147,4 +151,6 @@ class MockTableEnvironment extends TableEnvironment {
     functionInstance: UserDefinedFunction): Unit = ???
 
   override def dropTemporaryFunction(path: String): Boolean = ???
+
+  override def collect(table: Table): util.Iterator[tuple.Tuple2[lang.Boolean, Row]] = ???
 }

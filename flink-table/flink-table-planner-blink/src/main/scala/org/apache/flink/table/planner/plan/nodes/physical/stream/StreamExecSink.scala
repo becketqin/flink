@@ -18,9 +18,13 @@
 
 package org.apache.flink.table.planner.plan.nodes.physical.stream
 
+import org.apache.flink.api.common.ExecutionConfig
+import org.apache.flink.api.common.typeutils.TypeSerializer
+import org.apache.flink.api.java.tuple.Tuple2
 import org.apache.flink.api.dag.Transformation
 import org.apache.flink.streaming.api.datastream.DataStream
-import org.apache.flink.streaming.api.transformations.OneInputTransformation
+import org.apache.flink.streaming.api.operators.collect.{CollectSinkOperator, SimpleCollectSinkOperatorFactory}
+import org.apache.flink.streaming.api.transformations.{OneInputTransformation, SinkTransformation}
 import org.apache.flink.table.api.{Table, TableException}
 import org.apache.flink.table.dataformat.BaseRow
 import org.apache.flink.table.planner.calcite.FlinkTypeFactory
@@ -35,6 +39,9 @@ import org.apache.flink.table.planner.sinks.DataStreamTableSink
 import org.apache.flink.table.runtime.typeutils.{BaseRowTypeInfo, TypeCheckUtils}
 import org.apache.flink.table.sinks._
 import org.apache.flink.table.types.logical.TimestampType
+import org.apache.flink.table.utils.collect.{StreamTableCollectIterator, StreamTableCollectPlaceHolderSink}
+import org.apache.flink.types.Row
+
 import org.apache.calcite.plan.{RelOptCluster, RelTraitSet}
 import org.apache.calcite.rel.RelNode
 
@@ -58,7 +65,8 @@ class StreamExecSink[T](
   override def producesUpdates: Boolean = false
 
   override def needsUpdatesAsRetraction(input: RelNode): Boolean =
-    sink.isInstanceOf[RetractStreamTableSink[_]]
+    sink.isInstanceOf[RetractStreamTableSink[_]] ||
+      sink.isInstanceOf[StreamTableCollectPlaceHolderSink]
 
   override def consumesRetractions: Boolean = false
 
@@ -140,6 +148,25 @@ class StreamExecSink[T](
         // table sink, so we do not need to invoke TableSink#emitBoundedStream and set resource,
         // just a translation to Transformation is ok.
         translateToTransformation(dsTableSink.withChangeFlag, planner)
+
+      case collectPlaceHolderSink: StreamTableCollectPlaceHolderSink =>
+        val transformation = translateToTransformation(withChangeFlag = true, planner)
+        val outputTypeInfo = transformation.getOutputType
+        val serializer = outputTypeInfo.createSerializer(new ExecutionConfig)
+
+        val operator = new CollectSinkOperator(
+          serializer,
+          collectPlaceHolderSink.getMaxResultsPerBatch,
+          collectPlaceHolderSink.getFinalResultAccumulatorName)
+        val operatorFactory = new SimpleCollectSinkOperatorFactory(operator)
+
+        val iterator = new StreamTableCollectIterator(
+          operator.getOperatorIdFuture,
+          serializer.asInstanceOf[TypeSerializer[Tuple2[java.lang.Boolean, Row]]],
+          collectPlaceHolderSink.getFinalResultAccumulatorName)
+        collectPlaceHolderSink.setIterator(iterator)
+
+        new SinkTransformation(transformation, "CollectingSink", operatorFactory, 1)
 
       case _ =>
         throw new TableException(s"Only Support StreamTableSink! " +

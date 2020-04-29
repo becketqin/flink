@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.dag.Pipeline;
 import org.apache.flink.api.dag.Transformation;
+import org.apache.flink.core.execution.JobClient;
 import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.api.TableEnvironment;
 
@@ -57,4 +58,8 @@ public interface Executor {
 	 */
 	JobExecutionResult execute(Pipeline pipeline) throws Exception;
 
+	/**
+	 * NOTE: Temporal change. This method will be added in FLIP-84.
+	 */
+	JobClient executeAsync(Pipeline pipeline) throws Exception;
 }

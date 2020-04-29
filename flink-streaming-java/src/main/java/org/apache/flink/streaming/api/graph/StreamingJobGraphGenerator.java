@@ -331,7 +331,6 @@ public class StreamingJobGraphGenerator {
 				JobVertex jobVertex = jobVertices.get(startNodeId);
 				try {
 					for (OperatorCoordinator.Provider provider : coordinatorProviders) {
-						System.out.println(provider);
 						jobVertex.addOperatorCoordinator(new SerializedValue<>(provider));
 					}
 				} catch (IOException e) {
