@@ -154,16 +154,22 @@ class StreamExecSink[T](
         val outputTypeInfo = transformation.getOutputType
         val serializer = outputTypeInfo.createSerializer(new ExecutionConfig)
 
+        val id = util.UUID.randomUUID()
+        val listAccumulatorName = "tableCollectList_" + id
+        val tokenAccumulatorName = "tableCollectToken_" + id
+
         val operator = new CollectSinkOperator(
           serializer,
           collectPlaceHolderSink.getMaxResultsPerBatch,
-          collectPlaceHolderSink.getFinalResultAccumulatorName)
+          listAccumulatorName,
+          tokenAccumulatorName)
         val operatorFactory = new SimpleCollectSinkOperatorFactory(operator)
 
         val iterator = new StreamTableCollectIterator(
           operator.getOperatorIdFuture,
           serializer.asInstanceOf[TypeSerializer[Tuple2[java.lang.Boolean, Row]]],
-          collectPlaceHolderSink.getFinalResultAccumulatorName)
+          listAccumulatorName,
+          tokenAccumulatorName)
         collectPlaceHolderSink.setIterator(iterator)
 
         new SinkTransformation(transformation, "CollectingSink", operatorFactory, 1)

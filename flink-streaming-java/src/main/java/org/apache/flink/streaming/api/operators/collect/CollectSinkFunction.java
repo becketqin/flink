@@ -19,6 +19,7 @@ package org.apache.flink.streaming.api.operators.collect;
 
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.api.common.accumulators.LongCounter;
 import org.apache.flink.api.common.accumulators.SerializedListAccumulator;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
@@ -39,6 +40,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.UUID;
@@ -66,7 +68,8 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 	private final LinkedList<IN> bufferedResults;
 	private final int maxResultsPerBatch;
 	private final int maxResultsBuffered;
-	private final String finalResultAccumulatorName;
+	private final String finalResultListAccumulatorName;
+	private final String finalResultTokenAccumulatorName;
 
 	private final ReentrantLock bufferedResultsLock;
 	private final Condition bufferNotFullCondition;
@@ -80,12 +83,14 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 	public CollectSinkFunction(
 			TypeSerializer<IN> serializer,
 			int maxResultsPerBatch,
-			String finalResultAccumulatorName) {
+			String finalResultListAccumulatorName,
+			String finalResultTokenAccumulatorName) {
 		this.serializer = serializer;
 		this.bufferedResults = new LinkedList<>();
 		this.maxResultsPerBatch = maxResultsPerBatch;
 		this.maxResultsBuffered = maxResultsPerBatch * 2;
-		this.finalResultAccumulatorName = finalResultAccumulatorName;
+		this.finalResultListAccumulatorName = finalResultListAccumulatorName;
+		this.finalResultTokenAccumulatorName = finalResultTokenAccumulatorName;
 
 		this.bufferedResultsLock = new ReentrantLock();
 		this.bufferNotFullCondition = bufferedResultsLock.newCondition();
@@ -135,11 +140,13 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 		// NOTE: we do not unblock invoke method,
 		// because if the close method is called when the invoke method is blocking,
 		// then the job does not terminate normally, in this case we do not guarantee to return all results
-		SerializedListAccumulator<IN> accumulator = new SerializedListAccumulator<>();
+		SerializedListAccumulator<IN> listAccumulator = new SerializedListAccumulator<>();
 		for (IN result : bufferedResults) {
-			accumulator.add(result, serializer);
+			listAccumulator.add(result, serializer);
 		}
-		getRuntimeContext().addAccumulator(finalResultAccumulatorName, accumulator);
+		LongCounter tokenAccumulator = new LongCounter(firstBufferedResultToken);
+		getRuntimeContext().addAccumulator(finalResultListAccumulatorName, listAccumulator);
+		getRuntimeContext().addAccumulator(finalResultTokenAccumulatorName, tokenAccumulator);
 		bufferedResultsLock.unlock();
 		serverThread.close();
 	}
@@ -243,13 +250,13 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 			}
 
 			// send out `length` results
-			long token = firstBufferedResultToken;
 			List<IN> results = new ArrayList<>(length);
+			Iterator<IN> iterator = bufferedResults.iterator();
 			for (int i = 0; i < length; i++) {
-				results.add(bufferedResults.removeFirst());
-				firstBufferedResultToken++;
+				results.add(iterator.next());
 			}
-			byte[] bytes = CollectCoordinationResponse.serialize(version, token, results, serializer);
+			byte[] bytes = CollectCoordinationResponse.serialize(
+				version, firstBufferedResultToken, results, serializer);
 			outStream.writeInt(bytes.length);
 			outStream.write(bytes);
 		}

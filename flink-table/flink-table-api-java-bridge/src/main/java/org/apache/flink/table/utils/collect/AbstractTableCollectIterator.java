@@ -54,7 +54,8 @@ public abstract class AbstractTableCollectIterator<T> implements TableCollectIte
 
 	private final CompletableFuture<OperatorID> operatorIdFuture;
 	private final TypeSerializer<T> serializer;
-	private final String finalResultAccumulatorName;
+	private final String finalResultListAccumulatorName;
+	private final String finalResultTokenAccumulatorName;
 	private JobClient jobClient;
 
 	protected final LinkedList<Tuple2<Boolean, Row>> bufferedResults;
@@ -66,10 +67,12 @@ public abstract class AbstractTableCollectIterator<T> implements TableCollectIte
 	public AbstractTableCollectIterator(
 			CompletableFuture<OperatorID> operatorIdFuture,
 			TypeSerializer<T> serializer,
-			String finalResultAccumulatorName) {
+			String finalResultListAccumulatorName,
+			String finalResultTokenAccumulatorName) {
 		this.operatorIdFuture = operatorIdFuture;
 		this.serializer = serializer;
-		this.finalResultAccumulatorName = finalResultAccumulatorName;
+		this.finalResultListAccumulatorName = finalResultListAccumulatorName;
+		this.finalResultTokenAccumulatorName = finalResultTokenAccumulatorName;
 
 		this.bufferedResults = new LinkedList<>();
 
@@ -128,7 +131,7 @@ public abstract class AbstractTableCollectIterator<T> implements TableCollectIte
 				if (status.isGloballyTerminalState()) {
 					// job terminated, read results from accumulator
 					terminated = true;
-					return getAccumulatorResults();
+					return getAccumulatorResults(token);
 				}
 
 				CollectCoordinationRequest request = new CollectCoordinationRequest(version, token);
@@ -171,11 +174,16 @@ public abstract class AbstractTableCollectIterator<T> implements TableCollectIte
 		}
 	}
 
-	private List<T> getAccumulatorResults() {
+	private List<T> getAccumulatorResults(long token) {
 		try {
 			JobExecutionResult executionResult = jobClient.getJobExecutionResult(getClass().getClassLoader()).get();
-			ArrayList<byte[]> serializedResults = executionResult.getAccumulatorResult(finalResultAccumulatorName);
-			return SerializedListAccumulator.deserializeList(serializedResults, serializer);
+			ArrayList<byte[]> serializedList = executionResult.getAccumulatorResult(finalResultListAccumulatorName);
+			long begin = executionResult.getAccumulatorResult(finalResultTokenAccumulatorName);
+			ArrayList<byte[]> subList = new ArrayList<>();
+			for (int i = (int) (token - begin); i < serializedList.size(); i++) {
+				subList.add(serializedList.get(i));
+			}
+			return SerializedListAccumulator.deserializeList(subList, serializer);
 		} catch (Exception e) {
 			LOG.warn("Failed to fetch final results in accumulators, some results might be lost", e);
 			return Collections.emptyList();

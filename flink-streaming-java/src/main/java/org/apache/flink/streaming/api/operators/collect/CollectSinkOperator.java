@@ -42,8 +42,10 @@ public class CollectSinkOperator<IN> extends StreamSink<IN> implements Coordinat
 	public CollectSinkOperator(
 			TypeSerializer<IN> serializer,
 			int maxResultsPerBatch,
-			String finalResultAccumulatorName) {
-		super(new CollectSinkFunction<>(serializer, maxResultsPerBatch, finalResultAccumulatorName));
+			String finalResultListAccumulatorName,
+			String finalResultTokenAccumulatorName) {
+		super(new CollectSinkFunction<>(
+			serializer, maxResultsPerBatch, finalResultListAccumulatorName, finalResultTokenAccumulatorName));
 		this.sinkFunction = (CollectSinkFunction<IN>) getUserFunction();
 		this.operatorIdFuture = new CompletableFuture<>();
 	}

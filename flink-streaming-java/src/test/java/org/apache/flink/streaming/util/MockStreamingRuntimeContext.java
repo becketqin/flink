@@ -29,6 +29,7 @@ import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.streaming.runtime.tasks.TestProcessingTimeService;
 
 import java.util.Collections;
+import java.util.HashMap;
 
 /**
  * Mock {@link StreamingRuntimeContext} to use in tests.
@@ -51,7 +52,7 @@ public class MockStreamingRuntimeContext extends StreamingRuntimeContext {
 				.setTaskName("mockTask")
 				.setManagedMemorySize(4 * MemoryManager.DEFAULT_PAGE_SIZE)
 				.build(),
-			Collections.emptyMap());
+			new HashMap<>());
 
 		this.isCheckpointingEnabled = isCheckpointingEnabled;
 		this.numParallelSubtasks = numParallelSubtasks;

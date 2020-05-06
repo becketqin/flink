@@ -30,11 +30,8 @@ import org.apache.flink.types.Row;
 @Internal
 public class BatchTableCollectPlaceHolderSink extends AbstractTableCollectPlaceHolderSink<Row> {
 
-	public BatchTableCollectPlaceHolderSink(
-			TableSchema schema,
-			int maxResultsPerBatch,
-			String finalResultAccumulatorName) {
-		super(schema, maxResultsPerBatch, finalResultAccumulatorName);
+	public BatchTableCollectPlaceHolderSink(TableSchema schema, int maxResultsPerBatch) {
+		super(schema, maxResultsPerBatch);
 	}
 
 	@Override

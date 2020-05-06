@@ -33,17 +33,14 @@ public abstract class AbstractTableCollectPlaceHolderSink<T> implements TableSin
 
 	protected final TableSchema schema;
 	private final int maxResultsPerBatch;
-	private final String finalResultAccumulatorName;
 
 	private TableCollectIterator iterator;
 
 	public AbstractTableCollectPlaceHolderSink(
 			TableSchema schema,
-			int maxResultsPerBatch,
-			String finalResultAccumulatorName) {
+			int maxResultsPerBatch) {
 		this.schema = schema;
 		this.maxResultsPerBatch = maxResultsPerBatch;
-		this.finalResultAccumulatorName = finalResultAccumulatorName;
 	}
 
 	@Override
@@ -59,10 +56,6 @@ public abstract class AbstractTableCollectPlaceHolderSink<T> implements TableSin
 
 	public int getMaxResultsPerBatch() {
 		return maxResultsPerBatch;
-	}
-
-	public String getFinalResultAccumulatorName() {
-		return finalResultAccumulatorName;
 	}
 
 	/**

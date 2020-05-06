@@ -1065,12 +1065,11 @@ class TestingTableEnvironment private(
     val tableName = table.toString
     val sinkName = "tableCollectSink_" + tableName + "_" + id
     val jobName = "tableCollect_" + tableName + "_" + id
-    val accumulatorName = "tableCollectAccumulator_" + tableName + "_" + id
 
     val sink = if (isStreamingMode) {
-      new StreamTableCollectPlaceHolderSink(table.getSchema, 3, accumulatorName)
+      new StreamTableCollectPlaceHolderSink(table.getSchema, 3)
     } else {
-      new BatchTableCollectPlaceHolderSink(table.getSchema, 3, accumulatorName)
+      new BatchTableCollectPlaceHolderSink(table.getSchema, 3)
     }
     registerTableSink(sinkName, sink)
     table.insertInto(sinkName)

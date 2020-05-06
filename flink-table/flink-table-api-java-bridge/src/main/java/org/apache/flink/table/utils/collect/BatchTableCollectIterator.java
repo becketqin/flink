@@ -34,8 +34,9 @@ public class BatchTableCollectIterator extends AbstractTableCollectIterator<Row>
 	public BatchTableCollectIterator(
 			CompletableFuture<OperatorID> operatorIdFuture,
 			TypeSerializer<Row> serializer,
-			String finalResultAccumulatorName) {
-		super(operatorIdFuture, serializer, finalResultAccumulatorName);
+			String finalResultListAccumulatorName,
+			String finalResultTokenAccumulatorName) {
+		super(operatorIdFuture, serializer, finalResultListAccumulatorName, finalResultTokenAccumulatorName);
 	}
 
 	@Override

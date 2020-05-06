@@ -32,10 +32,11 @@ import java.util.concurrent.CompletableFuture;
 public class StreamTableCollectIterator extends AbstractTableCollectIterator<Tuple2<Boolean, Row>> {
 
 	public StreamTableCollectIterator(
-		CompletableFuture<OperatorID> operatorIdFuture,
-		TypeSerializer<Tuple2<Boolean, Row>> serializer,
-		String finalResultAccumulatorName) {
-		super(operatorIdFuture, serializer, finalResultAccumulatorName);
+			CompletableFuture<OperatorID> operatorIdFuture,
+			TypeSerializer<Tuple2<Boolean, Row>> serializer,
+			String finalResultListAccumulatorName,
+			String finalResultTokenAccumulatorName) {
+		super(operatorIdFuture, serializer, finalResultListAccumulatorName, finalResultTokenAccumulatorName);
 	}
 
 	@Override

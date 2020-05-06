@@ -737,14 +737,13 @@ public class TableEnvironmentImpl implements TableEnvironment {
 		String tableName = table.toString();
 		String sinkName = "tableCollectSink_" + tableName + "_" + id;
 		String jobName = "tableCollect_" + tableName + "_" + id;
-		String accumulatorName = "tableCollectAccumulator_" + tableName + "_" + id;
 
 		AbstractTableCollectPlaceHolderSink sink;
 		// TODO add maxResultsPerBatch config
 		if (isStreamingMode) {
-			sink = new StreamTableCollectPlaceHolderSink(table.getSchema(), 10, accumulatorName);
+			sink = new StreamTableCollectPlaceHolderSink(table.getSchema(), 10);
 		} else {
-			sink = new BatchTableCollectPlaceHolderSink(table.getSchema(), 10, accumulatorName);
+			sink = new BatchTableCollectPlaceHolderSink(table.getSchema(), 10);
 		}
 		registerTableSink(sinkName, sink);
 		table.insertInto(sinkName);
