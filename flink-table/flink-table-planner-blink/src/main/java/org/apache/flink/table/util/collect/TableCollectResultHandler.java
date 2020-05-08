@@ -16,34 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils.collect;
+package org.apache.flink.table.util.collect;
 
-import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.types.Row;
 
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 /**
- * A {@link TableCollectIterator} for batch jobs.
+ * Interface which changes results to a tuple.
+ *
+ * @param <T> result type
  */
-public class BatchTableCollectIterator extends AbstractTableCollectIterator<Row> {
+public interface TableCollectResultHandler<T> {
 
-	public BatchTableCollectIterator(
-			CompletableFuture<OperatorID> operatorIdFuture,
-			TypeSerializer<Row> serializer,
-			String finalResultListAccumulatorName,
-			String finalResultTokenAccumulatorName) {
-		super(operatorIdFuture, serializer, finalResultListAccumulatorName, finalResultTokenAccumulatorName);
-	}
-
-	@Override
-	protected void fetchMoreResults() {
-		List<Row> results = fetchResultsFromCoordinator();
-		for (Row row : results) {
-			bufferedResults.add(Tuple2.of(true, row));
-		}
-	}
+	Tuple2<Boolean, Row> handle(T result);
 }

@@ -33,14 +33,17 @@ public abstract class AbstractTableCollectPlaceHolderSink<T> implements TableSin
 
 	protected final TableSchema schema;
 	private final int maxResultsPerBatch;
+	private final boolean checkpointed;
 
 	private TableCollectIterator iterator;
 
 	public AbstractTableCollectPlaceHolderSink(
 			TableSchema schema,
-			int maxResultsPerBatch) {
+			int maxResultsPerBatch,
+			boolean checkpointed) {
 		this.schema = schema;
 		this.maxResultsPerBatch = maxResultsPerBatch;
+		this.checkpointed = checkpointed;
 	}
 
 	@Override
@@ -56,6 +59,10 @@ public abstract class AbstractTableCollectPlaceHolderSink<T> implements TableSin
 
 	public int getMaxResultsPerBatch() {
 		return maxResultsPerBatch;
+	}
+
+	public boolean isCheckpointed() {
+		return checkpointed;
 	}
 
 	/**

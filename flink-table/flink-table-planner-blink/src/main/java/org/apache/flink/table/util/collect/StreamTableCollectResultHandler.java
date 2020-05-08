@@ -16,32 +16,18 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils.collect;
+package org.apache.flink.table.util.collect;
 
-import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.types.Row;
 
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-
 /**
- * A {@link TableCollectIterator} for streaming jobs.
+ * A {@link TableCollectResultHandler} for streaming jobs. No changes are applied to the results.
  */
-public class StreamTableCollectIterator extends AbstractTableCollectIterator<Tuple2<Boolean, Row>> {
-
-	public StreamTableCollectIterator(
-			CompletableFuture<OperatorID> operatorIdFuture,
-			TypeSerializer<Tuple2<Boolean, Row>> serializer,
-			String finalResultListAccumulatorName,
-			String finalResultTokenAccumulatorName) {
-		super(operatorIdFuture, serializer, finalResultListAccumulatorName, finalResultTokenAccumulatorName);
-	}
+public class StreamTableCollectResultHandler implements TableCollectResultHandler<Tuple2<Boolean, Row>> {
 
 	@Override
-	protected void fetchMoreResults() {
-		List<Tuple2<Boolean, Row>> results = fetchResultsFromCoordinator();
-		bufferedResults.addAll(results);
+	public Tuple2<Boolean, Row> handle(Tuple2<Boolean, Row> result) {
+		return result;
 	}
 }

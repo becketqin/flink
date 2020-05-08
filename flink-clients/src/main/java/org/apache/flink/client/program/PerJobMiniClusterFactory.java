@@ -26,17 +26,24 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.RestOptions;
 import org.apache.flink.configuration.TaskManagerOptions;
 import org.apache.flink.core.execution.JobClient;
+import org.apache.flink.runtime.concurrent.FutureUtils;
 import org.apache.flink.runtime.jobgraph.JobGraph;
+import org.apache.flink.runtime.jobgraph.OperatorID;
 import org.apache.flink.runtime.jobmaster.JobResult;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.runtime.minicluster.RpcServiceSharing;
+import org.apache.flink.runtime.operators.coordination.CoordinationRequest;
+import org.apache.flink.runtime.operators.coordination.CoordinationRequester;
+import org.apache.flink.runtime.operators.coordination.CoordinationResponse;
+import org.apache.flink.util.SerializedValue;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -123,7 +130,7 @@ public final class PerJobMiniClusterFactory {
 	/**
 	 * A {@link JobClient} for a {@link PerJobMiniClusterFactory}.
 	 */
-	private static final class PerJobMiniClusterJobClient implements JobClient {
+	private static final class PerJobMiniClusterJobClient implements JobClient, CoordinationRequester {
 
 		private final JobID jobID;
 		private final MiniCluster miniCluster;
@@ -177,6 +184,17 @@ public final class PerJobMiniClusterFactory {
 					throw new CompletionException("Failed to convert JobResult to JobExecutionResult.", e);
 				}
 			});
+		}
+
+		@Override
+		public CompletableFuture<CoordinationResponse> sendCoordinationRequest(OperatorID operatorId, CoordinationRequest request) {
+			try {
+				SerializedValue<CoordinationRequest> serializedRequest = new SerializedValue<>(request);
+				return miniCluster.deliverCoordinationRequestToCoordinator(jobID, operatorId, serializedRequest);
+			} catch (IOException e) {
+				LOG.error("Error while sending coordination request", e);
+				return FutureUtils.completedExceptionally(e);
+			}
 		}
 	}
 }

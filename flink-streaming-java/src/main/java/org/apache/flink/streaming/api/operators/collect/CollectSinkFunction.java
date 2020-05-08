@@ -22,11 +22,16 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.accumulators.LongCounter;
 import org.apache.flink.api.common.accumulators.SerializedListAccumulator;
 import org.apache.flink.api.common.functions.RuntimeContext;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.memory.DataInputViewStreamWrapper;
 import org.apache.flink.core.memory.DataOutputViewStreamWrapper;
 import org.apache.flink.runtime.operators.coordination.OperatorEventGateway;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
@@ -60,7 +65,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 @Experimental
 @Internal
-public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
+public class CollectSinkFunction<IN> extends RichSinkFunction<IN> implements CheckpointedFunction {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CollectSinkFunction.class);
 
@@ -78,7 +83,12 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 
 	private String version;
 	private long firstBufferedResultToken;
+	private long lastCheckpointId;
 	private ServerThread serverThread;
+
+	private ListState<IN> bufferedResultsState;
+	private ListState<Long> firstBufferedResultTokenState;
+	private ListState<Long> lastCheckpointIdState;
 
 	public CollectSinkFunction(
 			TypeSerializer<IN> serializer,
@@ -94,6 +104,59 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 
 		this.bufferedResultsLock = new ReentrantLock();
 		this.bufferNotFullCondition = bufferedResultsLock.newCondition();
+
+		this.firstBufferedResultToken = 0;
+		this.lastCheckpointId = Long.MIN_VALUE;
+	}
+
+	@Override
+	public void initializeState(FunctionInitializationContext context) throws Exception {
+		bufferedResultsLock.lock();
+
+		bufferedResultsState =
+			context.getOperatorStateStore().getListState(
+				new ListStateDescriptor<>("bufferedResultsState", serializer));
+		bufferedResults.clear();
+		for (IN result : bufferedResultsState.get()) {
+			bufferedResults.add(result);
+		}
+
+		firstBufferedResultTokenState =
+			context.getOperatorStateStore().getListState(
+				new ListStateDescriptor<>("firstBufferedResultTokenState", Long.class));
+		firstBufferedResultToken = 0;
+		// there must be only 1 element in this state when restoring
+		for (long token : firstBufferedResultTokenState.get()) {
+			firstBufferedResultToken = token;
+		}
+
+		lastCheckpointIdState =
+			context.getOperatorStateStore().getListState(
+				new ListStateDescriptor<>("lastCheckpointIdState", Long.class));
+		lastCheckpointId = Long.MIN_VALUE;
+		// there must be only 1 element in this state when restoring
+		for (long checkpointId : lastCheckpointIdState.get()) {
+			lastCheckpointId = checkpointId;
+		}
+
+		bufferedResultsLock.unlock();
+	}
+
+	@Override
+	public void snapshotState(FunctionSnapshotContext context) throws Exception {
+		bufferedResultsLock.lock();
+
+		bufferedResultsState.clear();
+		bufferedResultsState.addAll(bufferedResults);
+
+		firstBufferedResultTokenState.clear();
+		firstBufferedResultTokenState.add(firstBufferedResultToken);
+
+		lastCheckpointId = context.getCheckpointId();
+		lastCheckpointIdState.clear();
+		lastCheckpointIdState.add(lastCheckpointId);
+
+		bufferedResultsLock.unlock();
 	}
 
 	@Override
@@ -105,7 +168,7 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 		// generate a random uuid when the sink is opened
 		// so that the client can know if the sink has been restarted
 		version = UUID.randomUUID().toString();
-		firstBufferedResultToken = 0;
+
 		serverThread = new ServerThread();
 		serverThread.start();
 
@@ -133,6 +196,10 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 
 	@Override
 	public void close() throws Exception {
+		serverThread.close();
+	}
+
+	public void accumulateFinalResults() throws Exception {
 		bufferedResultsLock.lock();
 		// put results not consumed by the client into the accumulator
 		// so that we do not block the closing procedure while not throwing results away
@@ -148,7 +215,6 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 		getRuntimeContext().addAccumulator(finalResultListAccumulatorName, listAccumulator);
 		getRuntimeContext().addAccumulator(finalResultTokenAccumulatorName, tokenAccumulator);
 		bufferedResultsLock.unlock();
-		serverThread.close();
 	}
 
 	public void setOperatorEventGateway(OperatorEventGateway eventGateway) {
@@ -256,7 +322,7 @@ public class CollectSinkFunction<IN> extends RichSinkFunction<IN> {
 				results.add(iterator.next());
 			}
 			byte[] bytes = CollectCoordinationResponse.serialize(
-				version, firstBufferedResultToken, results, serializer);
+				version, firstBufferedResultToken, lastCheckpointId, results, serializer);
 			outStream.writeInt(bytes.length);
 			outStream.write(bytes);
 		}

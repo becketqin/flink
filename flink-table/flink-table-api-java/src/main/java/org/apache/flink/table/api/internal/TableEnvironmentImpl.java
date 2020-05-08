@@ -33,6 +33,7 @@ import org.apache.flink.table.api.TableConfig;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
 import org.apache.flink.table.catalog.CatalogFunction;
@@ -739,11 +740,16 @@ public class TableEnvironmentImpl implements TableEnvironment {
 		String jobName = "tableCollect_" + tableName + "_" + id;
 
 		AbstractTableCollectPlaceHolderSink sink;
-		// TODO add maxResultsPerBatch config
 		if (isStreamingMode) {
-			sink = new StreamTableCollectPlaceHolderSink(table.getSchema(), 10);
+			sink = new StreamTableCollectPlaceHolderSink(
+				table.getSchema(),
+				tableConfig.getConfiguration().getInteger(ExecutionConfigOptions.TABLE_EXEC_COLLECT_MAX_BATCH_SIZE),
+				tableConfig.getConfiguration().getBoolean(ExecutionConfigOptions.TABLE_EXEC_COLLECT_EXACTLY_ONCE));
 		} else {
-			sink = new BatchTableCollectPlaceHolderSink(table.getSchema(), 10);
+			sink = new BatchTableCollectPlaceHolderSink(
+				table.getSchema(),
+				tableConfig.getConfiguration().getInteger(ExecutionConfigOptions.TABLE_EXEC_COLLECT_MAX_BATCH_SIZE),
+				tableConfig.getConfiguration().getBoolean(ExecutionConfigOptions.TABLE_EXEC_COLLECT_EXACTLY_ONCE));
 		}
 		registerTableSink(sinkName, sink);
 		table.insertInto(sinkName);

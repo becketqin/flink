@@ -476,5 +476,6 @@ object BatchTestBase {
   def configForMiniCluster(conf: TableConfig): Unit = {
     conf.getConfiguration.setInteger(TABLE_EXEC_RESOURCE_DEFAULT_PARALLELISM, DEFAULT_PARALLELISM)
     conf.getConfiguration.setString(TABLE_EXEC_SHUFFLE_MODE, ShuffleMode.PIPELINED.toString)
+    conf.getConfiguration.setInteger(TABLE_EXEC_COLLECT_MAX_BATCH_SIZE, 3)
   }
 }

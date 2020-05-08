@@ -1067,9 +1067,19 @@ class TestingTableEnvironment private(
     val jobName = "tableCollect_" + tableName + "_" + id
 
     val sink = if (isStreamingMode) {
-      new StreamTableCollectPlaceHolderSink(table.getSchema, 3)
+      new StreamTableCollectPlaceHolderSink(
+        table.getSchema,
+        tableConfig.getConfiguration.getInteger(
+          ExecutionConfigOptions.TABLE_EXEC_COLLECT_MAX_BATCH_SIZE),
+        tableConfig.getConfiguration.getBoolean(
+          ExecutionConfigOptions.TABLE_EXEC_COLLECT_EXACTLY_ONCE))
     } else {
-      new BatchTableCollectPlaceHolderSink(table.getSchema, 3)
+      new BatchTableCollectPlaceHolderSink(
+        table.getSchema,
+        tableConfig.getConfiguration.getInteger(
+          ExecutionConfigOptions.TABLE_EXEC_COLLECT_MAX_BATCH_SIZE),
+        tableConfig.getConfiguration.getBoolean(
+          ExecutionConfigOptions.TABLE_EXEC_COLLECT_EXACTLY_ONCE))
     }
     registerTableSink(sinkName, sink)
     table.insertInto(sinkName)

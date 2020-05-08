@@ -16,29 +16,20 @@
  * limitations under the License.
  */
 
-package org.apache.flink.table.utils.collect;
+package org.apache.flink.table.util.collect;
 
-import org.apache.flink.annotation.Internal;
-import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.types.DataType;
-import org.apache.flink.types.Row;
+import org.apache.flink.core.execution.JobClient;
+
+import java.util.List;
 
 /**
- * A place holder sink for retrieving query results of batch jobs to the client.
- * It will be changed into dedicated sink operators in planners.
+ * Interface for fetching results from {@link org.apache.flink.streaming.api.operators.collect.CollectSinkFunction}.
+ *
+ * @param <T> result type
  */
-@Internal
-public class BatchTableCollectPlaceHolderSink extends AbstractTableCollectPlaceHolderSink<Row> {
+public interface TableCollectResultFetcher<T> {
 
-	public BatchTableCollectPlaceHolderSink(
-			TableSchema schema,
-			int maxResultsPerBatch,
-			boolean checkpointed) {
-		super(schema, maxResultsPerBatch, checkpointed);
-	}
+	void configure(JobClient jobClient);
 
-	@Override
-	public DataType getConsumedDataType() {
-		return schema.toRowDataType();
-	}
+	List<T> nextBatch();
 }

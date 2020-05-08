@@ -68,6 +68,9 @@ public class CollectSinkOperatorCoordinator implements OperatorCoordinator, Coor
 			event instanceof CollectSinkAddressEvent, "Operator event must be a CollectSinkAddressEvent");
 		address = ((CollectSinkAddressEvent) event).getAddress();
 		LOG.debug("Received sink socket server address: " + address);
+
+		// this event is sent when the sink function starts, so we remove the old socket if it is present
+		socket = null;
 	}
 
 	@Override
@@ -114,10 +117,18 @@ public class CollectSinkOperatorCoordinator implements OperatorCoordinator, Coor
 		try {
 			CollectCoordinationRequest.DeserializedRequest deserializedRequest =
 				CollectCoordinationRequest.deserialize(wrapper);
+			// we set lastCheckpointId to Long.MIN_VALUE here which is OK,
+			// because results will be immediately exposed to user once lastCheckpointId advances,
+			// so a temporary step back does not matter
 			return CollectCoordinationResponse.serialize(
-				deserializedRequest.getVersion(), deserializedRequest.getToken(), Collections.emptyList(), null);
+				deserializedRequest.getVersion(),
+				deserializedRequest.getToken(),
+				Long.MIN_VALUE,
+				Collections.emptyList(),
+				null);
 		} catch (IOException e) {
 			// impossible, as the data is read from an already presented byte array
+			// still, this return value is acceptable, because client can't deserialize it and will retry
 			return new byte[0];
 		}
 	}

@@ -33,8 +33,11 @@ import org.apache.flink.types.Row;
 @Internal
 public class StreamTableCollectPlaceHolderSink extends AbstractTableCollectPlaceHolderSink<Tuple2<Boolean, Row>> {
 
-	public StreamTableCollectPlaceHolderSink(TableSchema schema, int maxResultsPerBatch) {
-		super(schema, maxResultsPerBatch);
+	public StreamTableCollectPlaceHolderSink(
+			TableSchema schema,
+			int maxResultsPerBatch,
+			boolean checkpointed) {
+		super(schema, maxResultsPerBatch, checkpointed);
 	}
 
 	@Override

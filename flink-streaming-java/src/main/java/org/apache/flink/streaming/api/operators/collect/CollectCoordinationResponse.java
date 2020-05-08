@@ -52,18 +52,24 @@ public class CollectCoordinationResponse implements CoordinationResponse {
 		try {
 			String version = versionSerializer.deserialize(wrapper);
 			long token = tokenSerializer.deserialize(wrapper);
+			long checkpointedToken = tokenSerializer.deserialize(wrapper);
 			int length = wrapper.readInt();
 			List<T> results = new ArrayList<>(length);
 			for (int i = 0; i < length; i++) {
 				results.add(serializer.deserialize(wrapper));
 			}
-			return new DeserializedResponse<>(version, token, results);
+			return new DeserializedResponse<>(version, token, checkpointedToken, results);
 		} catch (IOException e) {
 			throw new RuntimeException("Failed to deserialize collect sink result", e);
 		}
 	}
 
-	public static <T> byte[] serialize(String version, long token, List<T> results, TypeSerializer<T> serializer) {
+	public static <T> byte[] serialize(
+			String version,
+			long token,
+			long lastCheckpointId,
+			List<T> results,
+			TypeSerializer<T> serializer) {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		DataOutputViewStreamWrapper wrapper = new DataOutputViewStreamWrapper(baos);
 		TypeSerializer<String> versionSerializer = new StringSerializer();
@@ -71,6 +77,7 @@ public class CollectCoordinationResponse implements CoordinationResponse {
 		try {
 			versionSerializer.serialize(version, wrapper);
 			tokenSerializer.serialize(token, wrapper);
+			tokenSerializer.serialize(lastCheckpointId, wrapper);
 			wrapper.writeInt(results.size());
 			for (T result : results) {
 				serializer.serialize(result, wrapper);
@@ -90,11 +97,13 @@ public class CollectCoordinationResponse implements CoordinationResponse {
 
 		private final String version;
 		private final long token;
+		private final long lastCheckpointId;
 		private final List<T> results;
 
-		private DeserializedResponse(String version, long token, List<T> results) {
+		private DeserializedResponse(String version, long token, long lastCheckpointId, List<T> results) {
 			this.version = version;
 			this.token = token;
+			this.lastCheckpointId = lastCheckpointId;
 			this.results = results;
 		}
 
@@ -104,6 +113,10 @@ public class CollectCoordinationResponse implements CoordinationResponse {
 
 		public long getToken() {
 			return token;
+		}
+
+		public long getLastCheckpointId() {
+			return lastCheckpointId;
 		}
 
 		public List<T> getResults() {

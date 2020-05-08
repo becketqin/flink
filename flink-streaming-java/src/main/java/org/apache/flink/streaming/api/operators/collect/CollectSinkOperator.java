@@ -67,6 +67,12 @@ public class CollectSinkOperator<IN> extends StreamSink<IN> implements Coordinat
 			"CollectSinkOperator does not handle any operator event. This is a bug.");
 	}
 
+	@Override
+	public void close() throws Exception {
+		sinkFunction.accumulateFinalResults();
+		super.close();
+	}
+
 	public CompletableFuture<OperatorID> getOperatorIdFuture() {
 		return operatorIdFuture;
 	}

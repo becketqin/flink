@@ -201,6 +201,24 @@ public class ExecutionConfigOptions {
 				" is set true, its value must be positive.");
 
 	// ------------------------------------------------------------------------
+	//  Collect Options
+	// ------------------------------------------------------------------------
+
+	@Documentation.TableOption(execMode = Documentation.ExecMode.BATCH_STREAMING)
+	public static final ConfigOption<Integer> TABLE_EXEC_COLLECT_MAX_BATCH_SIZE =
+		key("table.exec.collect.max-batch-size")
+			.defaultValue(200)
+			.withDescription("The maximum number of results transitioned each time " +
+				"from the collecting sink to the client.");
+
+	@Documentation.TableOption(execMode = Documentation.ExecMode.BATCH_STREAMING)
+	public static final ConfigOption<Boolean> TABLE_EXEC_COLLECT_EXACTLY_ONCE =
+		key("table.exec.collect.exactly-once")
+			.defaultValue(false)
+			.withDescription("Whether to return an exactly-once iterator " +
+				"or an iterator that exposts the results as fast as possible.");
+
+	// ------------------------------------------------------------------------
 	//  Other Exec Options
 	// ------------------------------------------------------------------------
 	@Documentation.TableOption(execMode = Documentation.ExecMode.BATCH)

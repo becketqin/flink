@@ -39,7 +39,8 @@ import org.apache.flink.table.runtime.typeutils.BaseRowTypeInfo
 import org.apache.flink.table.sinks.{RetractStreamTableSink, StreamTableSink, TableSink, UpsertStreamTableSink}
 import org.apache.flink.table.types.DataType
 import org.apache.flink.types.Row
-import org.apache.flink.table.utils.collect.{BatchTableCollectIterator, BatchTableCollectPlaceHolderSink}
+import org.apache.flink.table.utils.collect.BatchTableCollectPlaceHolderSink
+import org.apache.flink.table.util.collect.{BatchTableCollectResultHandler, TableCollectIteratorImpl}
 
 import org.apache.calcite.plan.{RelOptCluster, RelTraitSet}
 import org.apache.calcite.rel.RelNode
@@ -133,11 +134,13 @@ class BatchExecSink[T](
           tokenAccumulatorName)
         val operatorFactory = new SimpleCollectSinkOperatorFactory(operator)
 
-        val iterator = new BatchTableCollectIterator(
+        val iterator = new TableCollectIteratorImpl(
           operator.getOperatorIdFuture,
           serializer.asInstanceOf[TypeSerializer[Row]],
           listAccumulatorName,
-          tokenAccumulatorName)
+          tokenAccumulatorName,
+          new BatchTableCollectResultHandler,
+          collectPlaceHolderSink.isCheckpointed)
         collectPlaceHolderSink.setIterator(iterator)
 
         new SinkTransformation(transformation, "CollectingSink", operatorFactory, 1)

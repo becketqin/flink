@@ -39,13 +39,14 @@ import org.apache.flink.table.planner.sinks.DataStreamTableSink
 import org.apache.flink.table.runtime.typeutils.{BaseRowTypeInfo, TypeCheckUtils}
 import org.apache.flink.table.sinks._
 import org.apache.flink.table.types.logical.TimestampType
-import org.apache.flink.table.utils.collect.{StreamTableCollectIterator, StreamTableCollectPlaceHolderSink}
+import org.apache.flink.table.utils.collect.StreamTableCollectPlaceHolderSink
+import org.apache.flink.table.util.collect.{StreamTableCollectResultHandler, TableCollectIteratorImpl}
 import org.apache.flink.types.Row
 
 import org.apache.calcite.plan.{RelOptCluster, RelTraitSet}
 import org.apache.calcite.rel.RelNode
 
-import java.util
+import java.{lang, util}
 
 import scala.collection.JavaConversions._
 
@@ -165,11 +166,13 @@ class StreamExecSink[T](
           tokenAccumulatorName)
         val operatorFactory = new SimpleCollectSinkOperatorFactory(operator)
 
-        val iterator = new StreamTableCollectIterator(
+        val iterator = new TableCollectIteratorImpl(
           operator.getOperatorIdFuture,
-          serializer.asInstanceOf[TypeSerializer[Tuple2[java.lang.Boolean, Row]]],
+          serializer.asInstanceOf[TypeSerializer[Tuple2[lang.Boolean, Row]]],
           listAccumulatorName,
-          tokenAccumulatorName)
+          tokenAccumulatorName,
+          new StreamTableCollectResultHandler,
+          collectPlaceHolderSink.isCheckpointed)
         collectPlaceHolderSink.setIterator(iterator)
 
         new SinkTransformation(transformation, "CollectingSink", operatorFactory, 1)
