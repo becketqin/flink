@@ -20,6 +20,7 @@ package org.apache.flink.streaming.runtime.tasks;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.api.connector.source.ExternallyInducedSourceReader;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.execution.Environment;
@@ -47,6 +48,7 @@ import org.apache.flink.streaming.api.operators.StreamOperatorFactory;
 import org.apache.flink.streaming.api.operators.StreamOperatorFactoryUtil;
 import org.apache.flink.streaming.api.operators.StreamTaskStateInitializer;
 import org.apache.flink.streaming.runtime.io.RecordWriterOutput;
+import org.apache.flink.streaming.runtime.io.StreamTaskExternallyInducedSourceInput;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.streamstatus.StreamStatus;
@@ -306,9 +308,29 @@ public class OperatorChain<OUT, OP extends StreamOperator<OUT>> implements Strea
 				sourceInput,
 				new ChainedSource(
 					chainedSourceOutput,
-					new StreamTaskSourceInput<>(sourceOperator, sourceInputGateIndex++, inputId)));
+					createStreamTaskSourceInput(
+						sourceOperator,
+						containingTask,
+						sourceInputGateIndex++,
+						inputId)));
 		}
 		return chainedSourceInputs;
+	}
+
+	private StreamTaskSourceInput<?> createStreamTaskSourceInput(
+			SourceOperator<?, ?> sourceOperator,
+			StreamTask<OUT, OP> containingTask,
+			int sourceInputGateIndex,
+			int inputId) {
+		if (sourceOperator.getSourceReader() instanceof ExternallyInducedSourceReader) {
+			return new StreamTaskExternallyInducedSourceInput<>(
+				sourceOperator,
+				(ExternallyInducedSourceAware) containingTask,
+				sourceInputGateIndex,
+				inputId);
+		} else {
+			return new StreamTaskSourceInput<>(sourceOperator, sourceInputGateIndex, inputId);
+		}
 	}
 
 	@SuppressWarnings("rawtypes")

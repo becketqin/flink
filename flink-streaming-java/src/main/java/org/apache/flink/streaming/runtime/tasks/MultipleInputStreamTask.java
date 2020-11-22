@@ -30,13 +30,16 @@ import org.apache.flink.streaming.api.graph.StreamConfig;
 import org.apache.flink.streaming.api.graph.StreamConfig.InputConfig;
 import org.apache.flink.streaming.api.graph.StreamEdge;
 import org.apache.flink.streaming.api.operators.MultipleInputStreamOperator;
+import org.apache.flink.streaming.api.operators.SourceOperator;
 import org.apache.flink.streaming.runtime.io.CheckpointBarrierHandler;
 import org.apache.flink.streaming.runtime.io.CheckpointedInputGate;
 import org.apache.flink.streaming.runtime.io.InputProcessorUtil;
 import org.apache.flink.streaming.runtime.io.StreamMultipleInputProcessorFactory;
+import org.apache.flink.streaming.runtime.io.StreamTaskExternallyInducedSourceInput;
 import org.apache.flink.streaming.runtime.io.StreamTaskSourceInput;
 import org.apache.flink.streaming.runtime.metrics.MinWatermarkGauge;
 import org.apache.flink.streaming.runtime.metrics.WatermarkGauge;
+import org.apache.flink.util.ExceptionUtils;
 
 import javax.annotation.Nullable;
 
@@ -47,13 +50,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
 
 /**
  * A {@link StreamTask} for executing a {@link MultipleInputStreamOperator} and supporting
  * the {@link MultipleInputStreamOperator} to select input for reading.
  */
 @Internal
-public class MultipleInputStreamTask<OUT> extends StreamTask<OUT, MultipleInputStreamOperator<OUT>> {
+public class MultipleInputStreamTask<OUT>
+		extends StreamTask<OUT, MultipleInputStreamOperator<OUT>>
+		implements ExternallyInducedSourceAware {
 	private static final int MAX_TRACKED_CHECKPOINTS = 100_000;
 
 	private final HashMap<Long, CompletableFuture<Boolean>> pendingCheckpointCompletedFutures = new HashMap<>();
@@ -198,8 +204,10 @@ public class MultipleInputStreamTask<OUT> extends StreamTask<OUT, MultipleInputS
 
 	private void triggerSourcesCheckpoint(CheckpointBarrier checkpointBarrier) throws IOException {
 		for (StreamTaskSourceInput<?> sourceInput : operatorChain.getSourceTaskInputs()) {
-			for (InputChannelInfo channelInfo : sourceInput.getChannelInfos()) {
-				checkpointBarrierHandler.processBarrier(checkpointBarrier, channelInfo);
+			if (!(sourceInput instanceof StreamTaskExternallyInducedSourceInput)) {
+				for (InputChannelInfo channelInfo : sourceInput.getChannelInfos()) {
+					checkpointBarrierHandler.processBarrier(checkpointBarrier, channelInfo);
+				}
 			}
 		}
 	}
@@ -231,5 +239,28 @@ public class MultipleInputStreamTask<OUT> extends StreamTask<OUT, MultipleInputS
 			resultFuture.completeExceptionally(cause);
 		}
 		super.abortCheckpointOnBarrier(checkpointId, cause);
+	}
+
+	@Override
+	public Consumer<Long> getCheckpointTriggeringHook(
+			SourceOperator<?, ?> sourceOperator,
+			List<InputChannelInfo> inputChannelInfos) {
+		return checkpointId -> {
+			final long timestamp = System.currentTimeMillis();
+			final CheckpointOptions checkpointOptions = CheckpointOptions.forCheckpointWithDefaultLocation(
+				configuration.isExactlyOnceCheckpointMode(),
+				configuration.isUnalignedCheckpointsEnabled(),
+				configuration.getAlignmentTimeout());
+			CheckpointBarrier barrier = new CheckpointBarrier(checkpointId, timestamp, checkpointOptions);
+			try {
+				for (InputChannelInfo channelInfo : inputChannelInfos) {
+					checkpointBarrierHandler.processBarrier(barrier, channelInfo);
+				}
+			} catch (IOException ioe) {
+				CompletableFuture<Boolean> resultFuture = pendingCheckpointCompletedFutures.remove(checkpointId);
+				resultFuture.completeExceptionally(ioe);
+				ExceptionUtils.rethrow(ioe);
+			}
+		};
 	}
 }
