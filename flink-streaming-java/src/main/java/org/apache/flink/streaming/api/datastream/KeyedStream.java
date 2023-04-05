@@ -102,6 +102,8 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
     /** The type of the key by which the stream is partitioned. */
     private final TypeInformation<KEY> keyType;
 
+    private final boolean sortInputForBatchExecution;
+
     /**
      * Creates a new {@link KeyedStream} using the given {@link KeySelector} to partition operator
      * state by key.
@@ -156,9 +158,34 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
             KeySelector<T, KEY> keySelector,
             TypeInformation<KEY> keyType) {
 
+        this(stream, partitionTransformation, keySelector, keyType, true);
+    }
+
+    /**
+     * Creates a new {@link KeyedStream} using the given {@link KeySelector} and {@link
+     * TypeInformation} to partition operator state by key, where the partitioning is defined by a
+     * {@link PartitionTransformation}.
+     *
+     * @param stream Base stream of data
+     * @param partitionTransformation Function that determines how the keys are distributed to
+     *     downstream operator(s)
+     * @param keySelector Function to extract keys from the base stream
+     * @param keyType Defines the type of the extracted keys
+     * @param sortInputForBatchExecution defines whether the input to this {@link KeyedStream}
+     *        needs to be sorted by the Flink runtime for when run in batch mode.
+     */
+    @Internal
+    KeyedStream(
+            DataStream<T> stream,
+            PartitionTransformation<T> partitionTransformation,
+            KeySelector<T, KEY> keySelector,
+            TypeInformation<KEY> keyType,
+            boolean sortInputForBatchExecution) {
+
         super(stream.getExecutionEnvironment(), partitionTransformation);
         this.keySelector = clean(keySelector);
         this.keyType = validateKeyType(keyType);
+        this.sortInputForBatchExecution = sortInputForBatchExecution;
     }
 
     /**
@@ -292,6 +319,7 @@ public class KeyedStream<T, KEY> extends DataStream<T> {
                 (OneInputTransformation<T, R>) returnStream.getTransformation();
         transform.setStateKeySelector(keySelector);
         transform.setStateKeyType(keyType);
+        transform.setSortInputForBatchExecution(sortInputForBatchExecution);
 
         return returnStream;
     }

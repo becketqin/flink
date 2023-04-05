@@ -209,6 +209,53 @@ public final class DataStreamUtils {
         return new KeyedStream<>(stream, partitionTransformation, keySelector, typeInfo);
     }
 
+    /**
+     * Reinterprets the given {@link DataStream} as a {@link KeyedStream}, which extracts keys with
+     * the given {@link KeySelector}. This method allows user to specify whether the given
+     * {@link DataStream} needs to be sorted by the Flink runtime in batch execution mode.
+     *
+     * <p>If sorting is needed for batch execution, Flink will sort the given {@link DataStream}
+     * by leveraging the shuffle service. In this case, the chaining strategy will be overridden to
+     * {@link org.apache.flink.streaming.api.operators.ChainingStrategy#HEAD HEAD} for
+     * the operator applied to this KeyedStream.
+     *
+     * <p>If the given {@link DataStream} is either already sorted for batch execution, or user
+     * knows the input {@link DataStream} does not need to be sorted. The user defined chaining
+     * strategy for the operator applied to this KeyedStream will still be honored.
+     *
+     * <p>IMPORTANT: For every partition of the base stream, the keys of events in the base stream
+     * must be partitioned exactly in the same way as if it was created through a {@link
+     * DataStream#keyBy(KeySelector)}.
+     *
+     * @param stream The data stream to reinterpret. For every partition, this stream must be
+     *     partitioned exactly in the same way as if it was created through a {@link
+     *     DataStream#keyBy(KeySelector)}.
+     * @param keySelector Function that defines how keys are extracted from the data stream.
+     * @param typeInfo Explicit type information about the key type.
+     * @param sortInputForBatchExecution sort the provided {@link DataStream} when executing
+     *        in batch mode.
+     * @param <T> Type of events in the data stream.
+     * @param <K> Type of the extracted keys.
+     * @return The reinterpretation of the {@link DataStream} as a {@link KeyedStream}.
+     */
+    public static <T, K> KeyedStream<T, K> reinterpretAsKeyedStream(
+            DataStream<T> stream,
+            KeySelector<T, K> keySelector,
+            TypeInformation<K> typeInfo,
+            boolean sortInputForBatchExecution) {
+
+        PartitionTransformation<T> partitionTransformation =
+                new PartitionTransformation<>(
+                        stream.getTransformation(), new ForwardPartitioner<>());
+
+        return new KeyedStream<>(
+                stream,
+                partitionTransformation,
+                keySelector,
+                typeInfo,
+                sortInputForBatchExecution);
+    }
+
     // ------------------------------------------------------------------------
 
     /** Private constructor to prevent instantiation. */
