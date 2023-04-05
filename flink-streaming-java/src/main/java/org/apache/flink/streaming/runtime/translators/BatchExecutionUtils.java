@@ -46,11 +46,21 @@ public class BatchExecutionUtils {
             int transformationId,
             TransformationTranslator.Context context,
             StreamConfig.InputRequirement... inputRequirements) {
+        applyBatchExecutionSettings(transformationId, true, context, inputRequirements);
+    }
+
+    static void applyBatchExecutionSettings(
+            int transformationId,
+            boolean sortInput,
+            TransformationTranslator.Context context,
+            StreamConfig.InputRequirement... inputRequirements) {
         StreamNode node = context.getStreamGraph().getStreamNode(transformationId);
         boolean sortInputs = context.getGraphGeneratorConfig().get(ExecutionOptions.SORT_INPUTS);
         boolean isInputSelectable = isInputSelectable(node);
 
-        adjustChainingStrategy(node);
+        if (sortInput) {
+            adjustChainingStrategy(node);
+        }
 
         checkState(
                 !isInputSelectable || !sortInputs,

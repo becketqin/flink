@@ -52,8 +52,12 @@ public final class OneInputTransformationTranslator<IN, OUT>
                         context);
         boolean isKeyed = keySelector != null;
         if (isKeyed) {
+            boolean sortInputRequired = transformation.getSortInputForBatchExecution();
             BatchExecutionUtils.applyBatchExecutionSettings(
-                    transformation.getId(), context, StreamConfig.InputRequirement.SORTED);
+                    transformation.getId(),
+                    sortInputRequired,
+                    context,
+                    StreamConfig.InputRequirement.SORTED);
         }
 
         return ids;

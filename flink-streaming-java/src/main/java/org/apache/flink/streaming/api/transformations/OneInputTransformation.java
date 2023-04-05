@@ -52,6 +52,8 @@ public class OneInputTransformation<IN, OUT> extends PhysicalTransformation<OUT>
 
     private TypeInformation<?> stateKeyType;
 
+    private boolean sortInputForBatchExecution;
+
     /**
      * Creates a new {@code OneInputTransformation} from the given input and operator.
      *
@@ -125,6 +127,14 @@ public class OneInputTransformation<IN, OUT> extends PhysicalTransformation<OUT>
 
     public TypeInformation<?> getStateKeyType() {
         return stateKeyType;
+    }
+
+    public void setSortInputForBatchExecution(boolean sortInputForBatchExecution) {
+        this.sortInputForBatchExecution = sortInputForBatchExecution;
+    }
+
+    public boolean getSortInputForBatchExecution() {
+        return sortInputForBatchExecution;
     }
 
     @Override
