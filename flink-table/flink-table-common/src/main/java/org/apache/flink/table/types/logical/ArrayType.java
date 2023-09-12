@@ -63,7 +63,8 @@ public final class ArrayType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new ArrayType(isNullable, elementType.copy());
+        return new ArrayType(isNullable, elementType.copy())
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -78,6 +79,9 @@ public final class ArrayType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
+        if (supportsCustomConversion(clazz)) {
+            return true;
+        }
         if (List.class.isAssignableFrom(clazz)) {
             return true;
         }
@@ -92,6 +96,9 @@ public final class ArrayType extends LogicalType {
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
+        if (supportsCustomConversion(clazz)) {
+            return true;
+        }
         if (INPUT_OUTPUT_CONVERSION.contains(clazz.getName())) {
             return true;
         }

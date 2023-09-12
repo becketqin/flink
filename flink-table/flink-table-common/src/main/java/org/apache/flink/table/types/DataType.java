@@ -23,6 +23,7 @@ import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.TimestampData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
@@ -68,12 +69,13 @@ public abstract class DataType implements AbstractDataType<DataType>, Serializab
 
     protected final Class<?> conversionClass;
 
-    DataType(LogicalType logicalType, @Nullable Class<?> conversionClass) {
+    DataType(
+            LogicalType logicalType,
+            @Nullable Class<?> conversionClass) {
         this.logicalType =
                 Preconditions.checkNotNull(logicalType, "Logical type must not be null.");
-        this.conversionClass =
-                performEarlyClassValidation(
-                        logicalType, ensureConversionClass(logicalType, conversionClass));
+        this.conversionClass = performEarlyClassValidation(
+                logicalType, ensureConversionClass(logicalType, conversionClass));
     }
 
     /**
@@ -94,6 +96,17 @@ public abstract class DataType implements AbstractDataType<DataType>, Serializab
      */
     public Class<?> getConversionClass() {
         return conversionClass;
+    }
+
+    /**
+     * Returns the {@link DataTypeConverter} to convert the data type between internal data
+     * structure and the conversion class.
+     *
+     * @return the {@link DataTypeConverter} to convert the data type between internal, or null if
+     *     the converter is not specified.
+     */
+    public DataTypeConverter<Object, Object> getDataTypeConverter() {
+        return logicalType.getConverterForClass(conversionClass);
     }
 
     /**
@@ -136,7 +149,7 @@ public abstract class DataType implements AbstractDataType<DataType>, Serializab
         }
         DataType dataType = (DataType) o;
         return logicalType.equals(dataType.logicalType)
-                && conversionClass.equals(dataType.conversionClass);
+                && Objects.equals(conversionClass, dataType.conversionClass);
     }
 
     @Override

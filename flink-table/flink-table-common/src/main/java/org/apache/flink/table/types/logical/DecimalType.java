@@ -103,7 +103,8 @@ public final class DecimalType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new DecimalType(isNullable, precision, scale);
+        return new DecimalType(isNullable, precision, scale)
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -113,12 +114,14 @@ public final class DecimalType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

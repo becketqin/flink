@@ -18,7 +18,12 @@
 
 package org.apache.flink.table.types.logical;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.utils.LogicalTypeCasts;
 import org.apache.flink.table.types.logical.utils.LogicalTypeMerging;
 import org.apache.flink.table.types.logical.utils.LogicalTypeParser;
@@ -60,9 +65,85 @@ public abstract class LogicalType implements Serializable {
 
     private final LogicalTypeRoot typeRoot;
 
+    private final Map<Class<?>, DataTypeConverter<Object, Object>> customConversions;
+
     public LogicalType(boolean isNullable, LogicalTypeRoot typeRoot) {
         this.isNullable = isNullable;
         this.typeRoot = Preconditions.checkNotNull(typeRoot);
+        this.customConversions = new HashMap<>();
+    }
+
+    /**
+     * Add a custom conversion to this type. Custom conversions are used to convert between
+     * an external class and the internal representation of this logical type.
+     *
+     * @param clazz the external class for conversion.
+     * @param customConverter the converter for the conversion.
+     * @return a new LogicalType instance with the custom conversion added.
+     */
+    public final LogicalType withCustomConversion(
+            Class<?> clazz, DataTypeConverter<Object, Object> customConverter) {
+        Preconditions.checkNotNull(customConverter,
+                "The custom converter should not be null.");
+        // Make a copy to ensure the immutability of LogicalType.
+        LogicalType copy = copy();
+        copy.customConversions.put(clazz, customConverter);
+        return copy;
+    }
+
+    /**
+     * Add custom conversions to this type. Custom conversions are used to convert between
+     * an external class and the internal representation of this logical type.
+     *
+     * @param conversions a map of external class to converter.
+     * @return a new LogicalType instance with the custom conversions added.
+     */
+    public final LogicalType withCustomConversions(
+            Map<Class<?>, DataTypeConverter<Object, Object>> conversions) {
+        // make a copy to ensure the immutability of LogicalType
+        LogicalType copy = copy();
+        conversions.forEach((clazz, converter) -> {
+            if (converter != null) {
+                copy.customConversions.put(clazz, converter);
+            }
+        });
+        return copy;
+    }
+
+    /**
+     * A protected helper method to allow subclasses to implement copy() without having
+     * proliferation of constructors.
+     */
+    protected LogicalType addCustomConversionsInPlace(
+            Map<Class<?>, DataTypeConverter<Object, Object>> conversions) {
+        customConversions.putAll(conversions);
+        return this;
+    }
+
+    /**
+     * Returns a map of custom conversions for this type.
+     */
+    public Map<Class<?>, DataTypeConverter<Object, Object>> getCustomConversions() {
+        return Collections.unmodifiableMap(customConversions);
+    }
+
+    /**
+     * Returns whether this type supports custom conversion for the given class.
+     * @param clazz the external class for conversion.
+     * @return true if this type supports custom conversion for the given class, false otherwise.
+     */
+    public boolean supportsCustomConversion(Class<?> clazz) {
+        return customConversions.containsKey(clazz);
+    }
+
+    /**
+     * Returns a custom converter for the given conversion class.
+     *
+     * @param clazz the external class for conversion.
+     * @return the converter for the conversion.
+     */
+    public DataTypeConverter<Object, Object> getConverterForClass(Class<?> clazz) {
+        return customConversions.get(clazz);
     }
 
     /** Returns whether a value of this type can be {@code null}. */

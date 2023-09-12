@@ -166,7 +166,8 @@ public final class LogicalTypeUtils {
                                             oldField.getDescription().orElse(null));
                                 })
                         .collect(Collectors.toList());
-        return new RowType(rowType.isNullable(), newFields);
+        return (RowType) new RowType(rowType.isNullable(), newFields)
+                .withCustomConversions(rowType.getCustomConversions());
     }
 
     // --------------------------------------------------------------------------------------------
@@ -175,19 +176,24 @@ public final class LogicalTypeUtils {
 
         @Override
         public LogicalType visit(TimestampType timestampType) {
-            return new TimestampType(timestampType.isNullable(), timestampType.getPrecision());
+            return new TimestampType(
+                    timestampType.isNullable(),
+                    timestampType.getPrecision())
+                    .withCustomConversions(timestampType.getCustomConversions());
         }
 
         @Override
         public LogicalType visit(ZonedTimestampType zonedTimestampType) {
             return new ZonedTimestampType(
-                    zonedTimestampType.isNullable(), zonedTimestampType.getPrecision());
+                    zonedTimestampType.isNullable(), zonedTimestampType.getPrecision())
+                    .withCustomConversions(zonedTimestampType.getCustomConversions());
         }
 
         @Override
         public LogicalType visit(LocalZonedTimestampType localZonedTimestampType) {
             return new LocalZonedTimestampType(
-                    localZonedTimestampType.isNullable(), localZonedTimestampType.getPrecision());
+                    localZonedTimestampType.isNullable(), localZonedTimestampType.getPrecision())
+                    .withCustomConversions(localZonedTimestampType.getCustomConversions());
         }
     }
 

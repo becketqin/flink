@@ -22,6 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
@@ -201,6 +202,8 @@ public final class StructuredType extends UserDefinedType {
 
         private final @Nullable Class<?> implementationClass;
 
+        private DataTypeConverter<Object, Object> converter;
+
         private List<StructuredAttribute> attributes = new ArrayList<>();
 
         private boolean isNullable = true;
@@ -258,6 +261,11 @@ public final class StructuredType extends UserDefinedType {
             return this;
         }
 
+        public Builder customConverter(DataTypeConverter<Object, Object> customConverter) {
+            this.converter = customConverter;
+            return this;
+        }
+
         public Builder setFinal(boolean isFinal) {
             this.isFinal = isFinal;
             return this;
@@ -280,7 +288,7 @@ public final class StructuredType extends UserDefinedType {
         }
 
         public StructuredType build() {
-            return new StructuredType(
+            StructuredType type = new StructuredType(
                     isNullable,
                     objectIdentifier,
                     attributes,
@@ -290,6 +298,8 @@ public final class StructuredType extends UserDefinedType {
                     superType,
                     description,
                     implementationClass);
+            return converter == null ?
+                    type : (StructuredType) type.withCustomConversion(implementationClass, converter);
         }
     }
 
@@ -383,7 +393,7 @@ public final class StructuredType extends UserDefinedType {
                 comparison,
                 superType == null ? null : (StructuredType) superType.copy(),
                 getDescription().orElse(null),
-                implementationClass);
+                implementationClass).addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -405,7 +415,8 @@ public final class StructuredType extends UserDefinedType {
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
         return (implementationClass != null && implementationClass.isAssignableFrom(clazz))
-                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
@@ -418,7 +429,8 @@ public final class StructuredType extends UserDefinedType {
             }
             currentType = currentType.superType;
         }
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

@@ -62,7 +62,10 @@ public final class VarCharType extends LogicalType {
 
     private static final Set<String> INPUT_OUTPUT_CONVERSION =
             conversionSet(
-                    String.class.getName(), byte[].class.getName(), StringData.class.getName());
+                    CharSequence.class.getName(),
+                    String.class.getName(),
+                    byte[].class.getName(),
+                    StringData.class.getName());
 
     private static final Class<?> DEFAULT_CONVERSION = String.class;
 
@@ -113,7 +116,7 @@ public final class VarCharType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new VarCharType(length, isNullable);
+        return new VarCharType(length, isNullable).addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -135,12 +138,14 @@ public final class VarCharType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

@@ -22,6 +22,7 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.ArrayData;
 import org.apache.flink.table.data.MapData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
@@ -78,6 +79,19 @@ public final class CollectionDataType extends DataType {
                 logicalType,
                 Preconditions.checkNotNull(
                         newConversionClass, "New conversion class must not be null."),
+                elementDataType);
+    }
+
+    @Override
+    public DataType bridgedTo(
+            Class<?> newConversionClass,
+            DataTypeConverter<Object, Object> converter) {
+        Preconditions.checkNotNull(
+                newConversionClass, "New conversion class must not be null.");
+        Preconditions.checkNotNull(converter, "Converter must not be null.");
+        return new CollectionDataType(
+                logicalType.withCustomConversion(newConversionClass, converter),
+                newConversionClass,
                 elementDataType);
     }
 

@@ -305,7 +305,8 @@ class DefaultSchemaResolver implements SchemaResolver {
                             new TimestampType(
                                     originalType.isNullable(),
                                     TimestampKind.ROWTIME,
-                                    originalType.getPrecision());
+                                    originalType.getPrecision())
+                                    .withCustomConversions(originalType.getCustomConversions());
                     return column.copy(replaceLogicalType(dataType, rowtimeType));
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     final LocalZonedTimestampType timestampLtzType =
@@ -314,7 +315,8 @@ class DefaultSchemaResolver implements SchemaResolver {
                             new LocalZonedTimestampType(
                                     timestampLtzType.isNullable(),
                                     TimestampKind.ROWTIME,
-                                    timestampLtzType.getPrecision());
+                                    timestampLtzType.getPrecision())
+                                    .withCustomConversions(timestampLtzType.getCustomConversions());
                     return column.copy(replaceLogicalType(dataType, rowtimeLtzType));
                 default:
                     throw new ValidationException(

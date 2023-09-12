@@ -70,7 +70,8 @@ public final class MultisetType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new MultisetType(isNullable, elementType.copy());
+        return new MultisetType(isNullable, elementType.copy())
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -88,12 +89,14 @@ public final class MultisetType extends LogicalType {
         if (Map.class.isAssignableFrom(clazz)) {
             return true;
         }
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

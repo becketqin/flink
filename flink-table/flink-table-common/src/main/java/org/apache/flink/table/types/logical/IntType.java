@@ -56,7 +56,7 @@ public final class IntType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new IntType(isNullable);
+        return new IntType(isNullable).addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -66,11 +66,15 @@ public final class IntType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return NOT_NULL_INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return NOT_NULL_INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
+        if (supportsCustomConversion(clazz)) {
+            return true;
+        }
         if (isNullable()) {
             return NULL_OUTPUT_CONVERSION.contains(clazz.getName());
         }

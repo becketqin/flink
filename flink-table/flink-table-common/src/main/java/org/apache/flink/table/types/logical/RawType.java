@@ -79,7 +79,8 @@ public final class RawType<T> extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new RawType<>(isNullable, clazz, serializer.duplicate());
+        return new RawType<>(isNullable, clazz, serializer.duplicate())
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -95,13 +96,15 @@ public final class RawType<T> extends LogicalType {
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
         return this.clazz.isAssignableFrom(clazz)
-                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
         return clazz.isAssignableFrom(this.clazz)
-                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+                || INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

@@ -406,6 +406,7 @@ public final class SchemaTranslator {
                 DataTypes.STRUCTURED(
                                 type.getImplementationClass()
                                         .orElseThrow(IllegalStateException::new),
+                                dataType.getDataTypeConverter(),
                                 fields)
                         .bridgedTo(oldConversion);
         if (!type.isNullable()) {

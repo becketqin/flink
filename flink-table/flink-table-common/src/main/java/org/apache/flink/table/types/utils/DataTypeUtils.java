@@ -338,7 +338,9 @@ public final class DataTypeUtils {
 
         @Override
         protected Void defaultMethod(DataType dataType) {
-            if (!dataType.getLogicalType().supportsInputConversion(dataType.getConversionClass())) {
+            if (dataType.getDataTypeConverter() == null
+                    && !dataType.getLogicalType()
+                            .supportsInputConversion(dataType.getConversionClass())) {
                 throw new ValidationException(
                         String.format(
                                 "Data type '%s' does not support an input conversion from class '%s'.",
@@ -356,8 +358,9 @@ public final class DataTypeUtils {
 
         @Override
         protected Void defaultMethod(DataType dataType) {
-            if (!dataType.getLogicalType()
-                    .supportsOutputConversion(dataType.getConversionClass())) {
+            if (dataType.getDataTypeConverter() == null
+                    && !dataType.getLogicalType()
+                            .supportsOutputConversion(dataType.getConversionClass())) {
                 throw new ValidationException(
                         String.format(
                                 "Data type '%s' does not support an output conversion to class '%s'.",
@@ -437,8 +440,8 @@ public final class DataTypeUtils {
                                                                 .getDescription()
                                                                 .orElse(null)))
                                 .collect(Collectors.toList());
-
-                newLogicalType = new RowType(logicalType.isNullable(), newFields);
+                newLogicalType = new RowType(logicalType.isNullable(), newFields)
+                        .withCustomConversions(logicalType.getCustomConversions());
             } else if (logicalType instanceof StructuredType) {
                 final StructuredType structuredType = (StructuredType) logicalType;
                 if (structuredType.getSuperType().isPresent()) {
@@ -467,7 +470,9 @@ public final class DataTypeUtils {
                 builder.comparison(structuredType.getComparison());
                 structuredType.getDescription().ifPresent(builder::description);
 
-                newLogicalType = builder.build();
+                newLogicalType = builder
+                        .build()
+                        .withCustomConversions(logicalType.getCustomConversions());
             } else {
                 throw new UnsupportedOperationException(
                         "Unsupported logical type : " + logicalType);
@@ -475,7 +480,9 @@ public final class DataTypeUtils {
             return transformation.transform(
                     factory,
                     new FieldsDataType(
-                            newLogicalType, fieldsDataType.getConversionClass(), newDataTypes));
+                            newLogicalType,
+                            fieldsDataType.getConversionClass(),
+                            newDataTypes));
         }
 
         @Override

@@ -20,6 +20,7 @@ package org.apache.flink.table.types;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 
 /**
@@ -70,4 +71,21 @@ public interface AbstractDataType<T extends AbstractDataType<T>> {
      * @return a new, reconfigured data type instance
      */
     T bridgedTo(Class<?> newConversionClass);
+
+    /**
+     * Adds a hint that data should be represented using the given class when entering or leaving
+     * the table ecosystem.
+     *
+     * <p>A supported conversion class depends on the logical type and its nullability property.
+     *
+     * <p>Please see the implementation of {@link LogicalType#supportsInputConversion(Class)},
+     * {@link LogicalType#supportsOutputConversion(Class)}, or the documentation for more
+     * information about supported conversions.
+     *
+     * @return a new, reconfigured data type instance
+     */
+    default T bridgedTo(Class<?> newConversionClass, DataTypeConverter<Object, Object> converter) {
+        throw new UnsupportedOperationException(
+                "bridgedTo(Class<?>, DataTypeConverter) is not implemented");
+    }
 }

@@ -114,7 +114,8 @@ public final class DistinctType extends UserDefinedType {
         return new DistinctType(
                 getObjectIdentifier().orElseThrow(IllegalStateException::new),
                 sourceType.copy(isNullable),
-                getDescription().orElse(null));
+                getDescription().orElse(null))
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override

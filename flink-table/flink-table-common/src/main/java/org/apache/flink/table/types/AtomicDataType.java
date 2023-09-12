@@ -20,6 +20,7 @@ package org.apache.flink.table.types;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.util.Preconditions;
 
@@ -56,6 +57,9 @@ public final class AtomicDataType extends DataType {
 
     @Override
     public DataType bridgedTo(Class<?> newConversionClass) {
+        if (conversionClass == newConversionClass) {
+            return this;
+        }
         return new AtomicDataType(
                 logicalType,
                 Preconditions.checkNotNull(

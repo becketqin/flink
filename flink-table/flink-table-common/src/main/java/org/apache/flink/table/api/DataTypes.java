@@ -31,6 +31,7 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.FieldsDataType;
 import org.apache.flink.table.types.KeyValueDataType;
 import org.apache.flink.table.types.UnresolvedDataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.ArrayType;
 import org.apache.flink.table.types.logical.BigIntType;
 import org.apache.flink.table.types.logical.BinaryType;
@@ -616,6 +617,30 @@ public final class DataTypes {
     }
 
     /**
+     * Data type of an array of elements with same subtype.
+     *
+     * <p>Compared to the SQL standard, the maximum cardinality of an array cannot be specified but
+     * is fixed at {@link Integer#MAX_VALUE}. Also, any valid type is supported as a subtype.
+     *
+     * @see ArrayType
+     */
+    public static DataType ARRAY(
+            DataType elementDataType,
+            Class<?> arrayConversionClass,
+            DataTypeConverter<Object, Object> arrayConverter) {
+        Preconditions.checkNotNull(elementDataType,
+                "Element data type must not be null.");
+        Preconditions.checkNotNull(arrayConversionClass,
+                "Array conversion class must not be null.");
+        Preconditions.checkNotNull(arrayConverter,
+                "Array converter must not be null.");
+        return new CollectionDataType(
+                new ArrayType(elementDataType.getLogicalType())
+                        .withCustomConversion(arrayConversionClass, arrayConverter),
+                elementDataType);
+    }
+
+    /**
      * Unresolved data type of an array of elements with same subtype.
      *
      * <p>Compared to the SQL standard, the maximum cardinality of an array cannot be specified but
@@ -935,6 +960,40 @@ public final class DataTypes {
      * @see StructuredType
      */
     public static <T> DataType STRUCTURED(Class<T> implementationClass, Field... fields) {
+        return STRUCTURED(implementationClass, null, fields);
+    }
+
+    /**
+     * Data type of a user-defined object structured type. Structured types contain zero, one or
+     * more attributes. Each attribute consists of a name and a type. A type cannot be defined so
+     * that one of its attribute types (transitively) uses itself.
+     *
+     * <p>There are two kinds of structured types. Types that are stored in a catalog and are
+     * identified by an {@link ObjectIdentifier} or anonymously defined, unregistered types (usually
+     * reflectively extracted) that are identified by an implementation {@link Class}.
+     *
+     * <p>This method helps in manually constructing anonymous, unregistered types. This is useful
+     * in cases where the reflective extraction using {@link DataTypes#of(Class)} is not applicable.
+     * However, {@link DataTypes#of(Class)} is the recommended way of creating inline structured
+     * types as it also considers {@link DataTypeHint}s.
+     *
+     * <p>Structured types are converted to internal data structures by the runtime. The given
+     * implementation class is only used at the edges of the table ecosystem (e.g. when bridging to
+     * a function or connector). Serialization and equality ({@code hashCode/equals}) are handled by
+     * the runtime based on the logical type. An implementation class must offer a default
+     * constructor with zero arguments or a full constructor that assigns all attributes.
+     *
+     * <p>Note: A caller of this method must make sure that the {@link
+     * DataType#getConversionClass()} of the given fields matches with the attributes of the given
+     * implementation class, otherwise an exception might be thrown during runtime.
+     *
+     * @see DataTypes#of(Class)
+     * @see StructuredType
+     */
+    public static <T> DataType STRUCTURED(
+            Class<T> implementationClass,
+            @Nullable DataTypeConverter<Object, Object> dataTypeConverter,
+            Field... fields) {
         // some basic validation of the class to prevent common mistakes
         validateStructuredClass(implementationClass);
 
@@ -951,6 +1010,7 @@ public final class DataTypes {
         builder.attributes(attributes);
         builder.setFinal(true);
         builder.setInstantiable(true);
+        builder.customConverter(dataTypeConverter);
         final List<DataType> fieldDataTypes =
                 Stream.of(fields).map(DataTypes.Field::getDataType).collect(Collectors.toList());
         return new FieldsDataType(builder.build(), implementationClass, fieldDataTypes);

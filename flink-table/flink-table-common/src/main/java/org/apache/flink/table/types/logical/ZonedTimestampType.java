@@ -118,7 +118,8 @@ public final class ZonedTimestampType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new ZonedTimestampType(isNullable, kind, precision);
+        return new ZonedTimestampType(isNullable, kind, precision)
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -136,12 +137,14 @@ public final class ZonedTimestampType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return INPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return OUTPUT_CONVERSION.contains(clazz.getName());
+        return OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

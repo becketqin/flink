@@ -323,7 +323,7 @@
                 },
                 "fields" : [ {
                   "name" : "list",
-                  "conversionClass" : "java.util.List"
+                  "conversionRecordType" : "java.util.List"
                 } ]
               }
             }
@@ -360,7 +360,7 @@
             "fields" : [ {
               "name" : "map",
               "keyClass" : {
-                "conversionClass" : "org.apache.flink.table.data.StringData"
+                "conversionRecordType" : "org.apache.flink.table.data.StringData"
               }
             } ]
           }
@@ -417,7 +417,7 @@
                 },
                 "fields" : [ {
                   "name" : "list",
-                  "conversionClass" : "java.util.List"
+                  "conversionRecordType" : "java.util.List"
                 } ]
               }
             }
@@ -454,7 +454,7 @@
             "fields" : [ {
               "name" : "map",
               "keyClass" : {
-                "conversionClass" : "org.apache.flink.table.data.StringData"
+                "conversionRecordType" : "org.apache.flink.table.data.StringData"
               }
             } ]
           }

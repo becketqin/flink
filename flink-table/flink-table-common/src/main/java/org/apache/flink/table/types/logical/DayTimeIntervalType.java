@@ -185,7 +185,8 @@ public final class DayTimeIntervalType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new DayTimeIntervalType(isNullable, resolution, dayPrecision, fractionalPrecision);
+        return new DayTimeIntervalType(isNullable, resolution, dayPrecision, fractionalPrecision)
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -195,11 +196,15 @@ public final class DayTimeIntervalType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return NOT_NULL_INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return NOT_NULL_INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
+        if (supportsCustomConversion(clazz)) {
+            return true;
+        }
         if (isNullable()) {
             return NULL_OUTPUT_CONVERSION.contains(clazz.getName());
         }

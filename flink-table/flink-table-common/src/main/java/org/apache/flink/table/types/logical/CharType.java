@@ -106,7 +106,7 @@ public final class CharType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new CharType(length, isNullable);
+        return new CharType(length, isNullable).addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -125,12 +125,14 @@ public final class CharType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName());
+        return INPUT_OUTPUT_CONVERSION.contains(clazz.getName())
+                || supportsCustomConversion(clazz);
     }
 
     @Override

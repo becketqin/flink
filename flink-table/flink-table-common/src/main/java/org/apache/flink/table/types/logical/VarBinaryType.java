@@ -106,7 +106,8 @@ public final class VarBinaryType extends LogicalType {
 
     @Override
     public LogicalType copy(boolean isNullable) {
-        return new VarBinaryType(length, isNullable);
+        return new VarBinaryType(length, isNullable)
+                .addCustomConversionsInPlace(getCustomConversions());
     }
 
     @Override
@@ -128,12 +129,14 @@ public final class VarBinaryType extends LogicalType {
 
     @Override
     public boolean supportsInputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION == clazz;
+        return INPUT_OUTPUT_CONVERSION == clazz
+                || supportsCustomConversion(clazz);
     }
 
     @Override
     public boolean supportsOutputConversion(Class<?> clazz) {
-        return INPUT_OUTPUT_CONVERSION == clazz;
+        return INPUT_OUTPUT_CONVERSION == clazz
+                || supportsCustomConversion(clazz);
     }
 
     @Override

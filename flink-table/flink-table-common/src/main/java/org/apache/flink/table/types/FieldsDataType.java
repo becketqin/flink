@@ -21,6 +21,7 @@ package org.apache.flink.table.types;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.util.Preconditions;
 
@@ -58,18 +59,31 @@ public final class FieldsDataType extends DataType {
 
     @Override
     public DataType notNull() {
-        return new FieldsDataType(logicalType.copy(false), conversionClass, fieldDataTypes);
+        return new FieldsDataType(
+                logicalType.copy(false), conversionClass, fieldDataTypes);
     }
 
     @Override
     public DataType nullable() {
-        return new FieldsDataType(logicalType.copy(true), conversionClass, fieldDataTypes);
+        return new FieldsDataType(
+                logicalType.copy(true), conversionClass, fieldDataTypes);
     }
 
     @Override
     public DataType bridgedTo(Class<?> newConversionClass) {
         return new FieldsDataType(
                 logicalType,
+                Preconditions.checkNotNull(
+                        newConversionClass, "New conversion class must not be null."),
+                fieldDataTypes);
+    }
+
+    @Override
+    public DataType bridgedTo(
+            Class<?> newConversionClass,
+            DataTypeConverter<Object, Object> converter) {
+        return new FieldsDataType(
+                logicalType.copy().withCustomConversion(newConversionClass, converter),
                 Preconditions.checkNotNull(
                         newConversionClass, "New conversion class must not be null."),
                 fieldDataTypes);
