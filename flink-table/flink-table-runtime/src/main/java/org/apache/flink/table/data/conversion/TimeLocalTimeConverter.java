@@ -18,14 +18,17 @@
 
 package org.apache.flink.table.data.conversion;
 
+import java.time.LocalTime;
+
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.TimeType;
 import org.apache.flink.table.utils.DateTimeUtils;
 
 /** Converter for {@link TimeType} of {@link java.time.LocalTime} external type. */
 @Internal
 public class TimeLocalTimeConverter
-        implements DataStructureConverter<Integer, java.time.LocalTime> {
+        implements DataTypeConverter<Integer, LocalTime> {
 
     private static final long serialVersionUID = 1L;
 

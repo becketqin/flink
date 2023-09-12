@@ -26,8 +26,8 @@ import org.apache.flink.core.memory.DataOutputSerializer;
 import org.apache.flink.formats.raw.RawFormatDeserializationSchema;
 import org.apache.flink.formats.raw.RawFormatSerializationSchema;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.StringUtils;
@@ -156,8 +156,8 @@ public class RawFormatSerDeSchemaTest {
         serializationSchema.open(mock(SerializationSchema.InitializationContext.class));
 
         Row row = Row.of(testSpec.value);
-        DataStructureConverter<Object, Object> converter =
-                DataStructureConverters.getConverter(ROW(FIELD("single", testSpec.type)));
+        DataTypeConverter<Object, Object> converter =
+                DefaultDataTypeConverters.getConverter(ROW(FIELD("single", testSpec.type)));
         RowData originalRowData = (RowData) converter.toInternal(row);
 
         byte[] serializedBytes = serializationSchema.serialize(originalRowData);

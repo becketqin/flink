@@ -31,8 +31,8 @@ import org.apache.flink.table.data.MapData;
 import org.apache.flink.table.data.RawValueData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.InstantiationUtil;
 
@@ -44,7 +44,7 @@ import java.util.Objects;
  * A serializer that can serialize and deserialize all data structures defined by a {@link
  * DataType}.
  *
- * <p>This class combines {@link DataStructureConverters} and {@link InternalSerializers} into one
+ * <p>This class combines {@link DefaultDataTypeConverters} and {@link InternalSerializers} into one
  * entity. The serialized binary format is always an internal binary format.
  *
  * <p>Serializing {@code null} in the top-level is not supported.
@@ -65,7 +65,7 @@ public final class ExternalSerializer<I, E> extends TypeSerializer<E> {
 
     private transient I reuse;
 
-    private transient DataStructureConverter<I, E> converter;
+    private transient DataTypeConverter<I, E> converter;
 
     private ExternalSerializer(
             DataType dataType, TypeSerializer<I> internalSerializer, boolean isInternalInput) {
@@ -213,7 +213,7 @@ public final class ExternalSerializer<I, E> extends TypeSerializer<E> {
 
     @SuppressWarnings("unchecked")
     private void initializeConverter() {
-        converter = (DataStructureConverter<I, E>) DataStructureConverters.getConverter(dataType);
+        converter = (DataTypeConverter<I, E>) DefaultDataTypeConverters.getConverter(dataType);
         converter.open(Thread.currentThread().getContextClassLoader());
     }
 

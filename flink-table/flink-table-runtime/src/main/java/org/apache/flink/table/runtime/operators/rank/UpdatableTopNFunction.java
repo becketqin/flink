@@ -32,7 +32,7 @@ import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.data.conversion.RowRowConverter;
 import org.apache.flink.table.runtime.generated.GeneratedRecordComparator;
 import org.apache.flink.table.runtime.keyselector.RowDataKeySelector;
@@ -81,8 +81,8 @@ public class UpdatableTopNFunction extends AbstractTopNFunction implements Check
     private final boolean lenient = true;
 
     // data converter for logging only.
-    private transient DataStructureConverter rowConverter;
-    private transient DataStructureConverter sortKeyConverter;
+    private transient DataTypeConverter rowConverter;
+    private transient DataTypeConverter sortKeyConverter;
 
     // a map state stores mapping from row key to record which is in topN
     // in tuple2, f0 is the record row, f1 is the index in the list of the same sort_key

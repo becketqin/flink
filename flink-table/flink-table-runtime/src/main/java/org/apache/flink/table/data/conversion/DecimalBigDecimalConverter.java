@@ -21,13 +21,14 @@ package org.apache.flink.table.data.conversion;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.DecimalData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.DecimalType;
 
 import java.math.BigDecimal;
 
 /** Converter for {@link DecimalType} of {@link BigDecimal} external type. */
 @Internal
-public class DecimalBigDecimalConverter implements DataStructureConverter<DecimalData, BigDecimal> {
+public class DecimalBigDecimalConverter implements DataTypeConverter<DecimalData, BigDecimal> {
 
     private static final long serialVersionUID = 1L;
 

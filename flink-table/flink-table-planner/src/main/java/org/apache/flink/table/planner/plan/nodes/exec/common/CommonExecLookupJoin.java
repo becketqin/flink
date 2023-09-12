@@ -34,8 +34,8 @@ import org.apache.flink.table.catalog.DataTypeFactory;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.source.LookupTableSource;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.functions.AsyncTableFunction;
 import org.apache.flink.table.functions.TableFunction;
 import org.apache.flink.table.functions.UserDefinedFunction;
@@ -425,8 +425,8 @@ public abstract class CommonExecLookupJoin extends ExecNodeBase<RowData> {
                 LookupJoinCodeGenerator.generatePreFilterCondition(
                         config, classLoader, preFilterCondition, inputRowType);
 
-        DataStructureConverter<?, ?> fetcherConverter =
-                DataStructureConverters.getConverter(generatedFuncWithType.dataType());
+        DataTypeConverter<?, ?> fetcherConverter =
+                DefaultDataTypeConverters.getConverter(generatedFuncWithType.dataType());
         AsyncFunction<RowData, RowData> asyncFunc;
         if (projectionOnTemporalTable != null) {
             // a projection or filter after table source scan
@@ -441,7 +441,7 @@ public abstract class CommonExecLookupJoin extends ExecNodeBase<RowData> {
             asyncFunc =
                     new AsyncLookupJoinWithCalcRunner(
                             generatedFuncWithType.tableFunc(),
-                            (DataStructureConverter<RowData, Object>) fetcherConverter,
+                            (DataTypeConverter<RowData, Object>) fetcherConverter,
                             generatedCalc,
                             generatedResultFuture,
                             generatedPreFilterCondition,
@@ -453,7 +453,7 @@ public abstract class CommonExecLookupJoin extends ExecNodeBase<RowData> {
             asyncFunc =
                     new AsyncLookupJoinRunner(
                             generatedFuncWithType.tableFunc(),
-                            (DataStructureConverter<RowData, Object>) fetcherConverter,
+                            (DataTypeConverter<RowData, Object>) fetcherConverter,
                             generatedResultFuture,
                             generatedPreFilterCondition,
                             InternalSerializers.create(rightRowType),

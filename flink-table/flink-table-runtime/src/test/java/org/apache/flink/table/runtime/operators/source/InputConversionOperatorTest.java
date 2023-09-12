@@ -22,8 +22,8 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.connector.source.DynamicTableSource;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 import org.apache.flink.types.RowKind;
@@ -119,8 +119,8 @@ public class InputConversionOperatorTest {
     }
 
     private static DynamicTableSource.DataStructureConverter createConverter(DataType dataType) {
-        final DataStructureConverter<Object, Object> converter =
-                DataStructureConverters.getConverter(dataType);
+        final DataTypeConverter<Object, Object> converter =
+                DefaultDataTypeConverters.getConverter(dataType);
         return new DynamicTableSource.DataStructureConverter() {
 
             @Override

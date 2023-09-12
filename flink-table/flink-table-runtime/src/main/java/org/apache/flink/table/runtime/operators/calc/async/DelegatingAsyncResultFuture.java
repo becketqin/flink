@@ -20,7 +20,7 @@ package org.apache.flink.table.runtime.operators.calc.async;
 
 import org.apache.flink.streaming.api.functions.async.ResultFuture;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.util.Preconditions;
 
 import java.util.ArrayList;
@@ -58,7 +58,7 @@ public class DelegatingAsyncResultFuture implements BiConsumer<Object, Throwable
     }
 
     public CompletableFuture<?> createAsyncFuture(
-            DataStructureConverter<Object, Object> converter) {
+            DataTypeConverter<Object, Object> converter) {
         Preconditions.checkState(future == null);
         Preconditions.checkState(convertedFuture == null);
         Preconditions.checkNotNull(outputFactory);

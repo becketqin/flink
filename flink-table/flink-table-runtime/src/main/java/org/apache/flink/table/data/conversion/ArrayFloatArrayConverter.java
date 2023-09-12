@@ -21,11 +21,12 @@ package org.apache.flink.table.data.conversion;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.ArrayData;
 import org.apache.flink.table.data.GenericArrayData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.ArrayType;
 
 /** Converter for {@link ArrayType} of {@code float[]} external type. */
 @Internal
-public class ArrayFloatArrayConverter implements DataStructureConverter<ArrayData, float[]> {
+public class ArrayFloatArrayConverter implements DataTypeConverter<ArrayData, float[]> {
 
     private static final long serialVersionUID = 1L;
 

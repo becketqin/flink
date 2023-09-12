@@ -20,23 +20,23 @@ package org.apache.flink.table.runtime.connector.sink;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 
 import javax.annotation.Nullable;
 
 /**
  * Implementation of {@link DynamicTableSink.DataStructureConverter}.
  *
- * <p>It wraps the internal {@link DataStructureConverter}.
+ * <p>It wraps the internal {@link DataTypeConverter}.
  */
 @Internal
 class DataStructureConverterWrapper implements DynamicTableSink.DataStructureConverter {
 
     private static final long serialVersionUID = 1L;
 
-    private final DataStructureConverter<Object, Object> structureConverter;
+    private final DataTypeConverter<Object, Object> structureConverter;
 
-    DataStructureConverterWrapper(DataStructureConverter<Object, Object> structureConverter) {
+    DataStructureConverterWrapper(DataTypeConverter<Object, Object> structureConverter) {
         this.structureConverter = structureConverter;
     }
 

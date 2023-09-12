@@ -22,7 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.connector.source.DynamicTableSource.DataStructureConverter;
 import org.apache.flink.table.connector.source.LookupTableSource;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
@@ -59,6 +59,6 @@ public final class LookupRuntimeProviderContext implements LookupTableSource.Loo
     public DataStructureConverter createDataStructureConverter(DataType producedDataType) {
         validateInputDataType(producedDataType);
         return new DataStructureConverterWrapper(
-                DataStructureConverters.getConverter(producedDataType));
+                DefaultDataTypeConverters.getConverter(producedDataType));
     }
 }

@@ -31,8 +31,8 @@ import org.apache.flink.table.client.gateway.TypedResult;
 import org.apache.flink.table.client.gateway.result.ChangelogResult;
 import org.apache.flink.table.client.util.CliClientTestUtils;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.testutils.TestingUtils;
 import org.apache.flink.testutils.executor.TestExecutorExtension;
 import org.apache.flink.types.Row;
@@ -167,16 +167,16 @@ class CliTableauResultViewTest {
                                 Timestamp.valueOf("2020-03-04 18:39:14"),
                                 new byte[] {-3, -2, -1, 0, 1, 2, 3}));
 
-        final DataStructureConverter<Object, Object> dataStructureConverter =
-                DataStructureConverters.getConverter(schema.toPhysicalRowDataType());
+        final DataTypeConverter<Object, Object> dataTypeConverter =
+                DefaultDataTypeConverters.getConverter(schema.toPhysicalRowDataType());
 
         data =
                 rows.stream()
-                        .map(r -> (RowData) (dataStructureConverter.toInternal(r)))
+                        .map(r -> (RowData) (dataTypeConverter.toInternal(r)))
                         .collect(Collectors.toList());
         streamingData =
                 rows.stream()
-                        .map(r -> (RowData) (dataStructureConverter.toInternal(r)))
+                        .map(r -> (RowData) (dataTypeConverter.toInternal(r)))
                         .collect(Collectors.toList());
     }
 

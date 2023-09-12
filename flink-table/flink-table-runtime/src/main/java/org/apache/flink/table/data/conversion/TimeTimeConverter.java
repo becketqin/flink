@@ -18,13 +18,16 @@
 
 package org.apache.flink.table.data.conversion;
 
+import java.sql.Time;
+
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.TimeType;
 import org.apache.flink.table.utils.DateTimeUtils;
 
 /** Converter for {@link TimeType} of {@link java.sql.Time} external type. */
 @Internal
-public class TimeTimeConverter implements DataStructureConverter<Integer, java.sql.Time> {
+public class TimeTimeConverter implements DataTypeConverter<Integer, Time> {
 
     private static final long serialVersionUID = 1L;
 

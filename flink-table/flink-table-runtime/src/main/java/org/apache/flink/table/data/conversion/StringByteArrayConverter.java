@@ -20,12 +20,13 @@ package org.apache.flink.table.data.conversion;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.StringData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.CharType;
 import org.apache.flink.table.types.logical.VarCharType;
 
 /** Converter for {@link CharType}/{@link VarCharType} of {@code byte[]} external type. */
 @Internal
-public class StringByteArrayConverter implements DataStructureConverter<StringData, byte[]> {
+public class StringByteArrayConverter implements DataTypeConverter<StringData, byte[]> {
 
     private static final long serialVersionUID = 1L;
 

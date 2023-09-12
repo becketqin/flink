@@ -25,6 +25,7 @@ import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.runtime.generated.CompileUtils;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.StructuredType;
 
 import java.lang.reflect.Field;
@@ -45,11 +46,11 @@ import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.getFi
 /** Converter for {@link StructuredType} of its implementation class. */
 @Internal
 @SuppressWarnings("unchecked")
-public class StructuredObjectConverter<T> implements DataStructureConverter<RowData, T> {
+public class StructuredObjectConverter<T> implements DataTypeConverter<RowData, T> {
 
     private static final long serialVersionUID = 1L;
 
-    private final DataStructureConverter<Object, Object>[] fieldConverters;
+    private final DataTypeConverter<Object, Object>[] fieldConverters;
 
     private final RowData.FieldGetter[] fieldGetters;
 
@@ -57,10 +58,10 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
 
     private final String generatedCode;
 
-    private transient DataStructureConverter<RowData, T> generatedConverter;
+    private transient DataTypeConverter<RowData, T> generatedConverter;
 
     private StructuredObjectConverter(
-            DataStructureConverter<Object, Object>[] fieldConverters,
+            DataTypeConverter<Object, Object>[] fieldConverters,
             RowData.FieldGetter[] fieldGetters,
             String generatedName,
             String generatedCode) {
@@ -72,18 +73,18 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
 
     @Override
     public void open(ClassLoader classLoader) {
-        for (DataStructureConverter<Object, Object> fieldConverter : fieldConverters) {
+        for (DataTypeConverter<Object, Object> fieldConverter : fieldConverters) {
             fieldConverter.open(classLoader);
         }
         try {
             final Class<?> compiledConverter =
                     CompileUtils.compile(classLoader, generatedName, generatedCode);
             generatedConverter =
-                    (DataStructureConverter<RowData, T>)
+                    (DataTypeConverter<RowData, T>)
                             compiledConverter
                                     .getConstructor(
                                             RowData.FieldGetter[].class,
-                                            DataStructureConverter[].class)
+                                            DataTypeConverter[].class)
                                     .newInstance(fieldGetters, fieldConverters);
         } catch (Throwable t) {
             throw new TableException("Error while generating structured type converter.", t);
@@ -118,7 +119,7 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
     }
 
     /**
-     * Creates a {@link DataStructureConverter} for the given structured type.
+     * Creates a {@link DataTypeConverter} for the given structured type.
      *
      * <p>Note: We do not perform validation if data type and structured type implementation match.
      * This must have been done earlier in the {@link DataTypeFactory}.
@@ -127,13 +128,13 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
     private static StructuredObjectConverter<?> createOrError(DataType dataType) {
         final List<DataType> fields = dataType.getChildren();
 
-        final DataStructureConverter<Object, Object>[] fieldConverters =
+        final DataTypeConverter<Object, Object>[] fieldConverters =
                 fields.stream()
                         .map(
                                 dt ->
-                                        (DataStructureConverter<Object, Object>)
-                                                DataStructureConverters.getConverter(dt))
-                        .toArray(DataStructureConverter[]::new);
+                                        (DataTypeConverter<Object, Object>)
+                                                DefaultDataTypeConverters.getConverter(dt))
+                        .toArray(DataTypeConverter[]::new);
 
         final RowData.FieldGetter[] fieldGetters =
                 IntStream.range(0, fields.size())
@@ -180,10 +181,10 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
                 "public class ",
                 converterName,
                 " implements ",
-                DataStructureConverter.class,
+                DataTypeConverter.class,
                 " {");
         line(sb, "    private final ", RowData.FieldGetter.class, "[] fieldGetters;");
-        line(sb, "    private final ", DataStructureConverter.class, "[] fieldConverters;");
+        line(sb, "    private final ", DataTypeConverter.class, "[] fieldConverters;");
 
         line(
                 sb,
@@ -192,7 +193,7 @@ public class StructuredObjectConverter<T> implements DataStructureConverter<RowD
                 "(",
                 RowData.FieldGetter.class,
                 "[] fieldGetters, ",
-                DataStructureConverter.class,
+                DataTypeConverter.class,
                 "[] fieldConverters) {");
         line(sb, "        this.fieldGetters = fieldGetters;");
         line(sb, "        this.fieldConverters = fieldConverters;");

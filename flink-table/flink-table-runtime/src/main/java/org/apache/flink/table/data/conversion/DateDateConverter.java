@@ -18,13 +18,16 @@
 
 package org.apache.flink.table.data.conversion;
 
+import java.sql.Date;
+
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.DateType;
 import org.apache.flink.table.utils.DateTimeUtils;
 
 /** Converter for {@link DateType} of {@link java.sql.Date} external type. */
 @Internal
-public class DateDateConverter implements DataStructureConverter<Integer, java.sql.Date> {
+public class DateDateConverter implements DataTypeConverter<Integer, Date> {
 
     private static final long serialVersionUID = 1L;
 

@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.Row;
 import org.apache.flink.types.RowUtils;
@@ -35,18 +36,18 @@ import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.getFi
 
 /** Converter for {@link RowType} of {@link Row} external type. */
 @Internal
-public class RowRowConverter implements DataStructureConverter<RowData, Row> {
+public class RowRowConverter implements DataTypeConverter<RowData, Row> {
 
     private static final long serialVersionUID = 1L;
 
-    private final DataStructureConverter<Object, Object>[] fieldConverters;
+    private final DataTypeConverter<Object, Object>[] fieldConverters;
 
     private final RowData.FieldGetter[] fieldGetters;
 
     private final LinkedHashMap<String, Integer> positionByName;
 
     private RowRowConverter(
-            DataStructureConverter<Object, Object>[] fieldConverters,
+            DataTypeConverter<Object, Object>[] fieldConverters,
             RowData.FieldGetter[] fieldGetters,
             LinkedHashMap<String, Integer> positionByName) {
         this.fieldConverters = fieldConverters;
@@ -56,7 +57,7 @@ public class RowRowConverter implements DataStructureConverter<RowData, Row> {
 
     @Override
     public void open(ClassLoader classLoader) {
-        for (DataStructureConverter<Object, Object> fieldConverter : fieldConverters) {
+        for (DataTypeConverter<Object, Object> fieldConverter : fieldConverters) {
             fieldConverter.open(classLoader);
         }
     }
@@ -113,10 +114,10 @@ public class RowRowConverter implements DataStructureConverter<RowData, Row> {
     @SuppressWarnings({"unchecked", "Convert2MethodRef"})
     public static RowRowConverter create(DataType dataType) {
         final List<DataType> fields = dataType.getChildren();
-        final DataStructureConverter<Object, Object>[] fieldConverters =
+        final DataTypeConverter<Object, Object>[] fieldConverters =
                 fields.stream()
-                        .map(dt -> DataStructureConverters.getConverter(dt))
-                        .toArray(DataStructureConverter[]::new);
+                        .map(dt -> DefaultDataTypeConverters.getConverter(dt))
+                        .toArray(DataTypeConverter[]::new);
         final RowData.FieldGetter[] fieldGetters =
                 IntStream.range(0, fields.size())
                         .mapToObj(

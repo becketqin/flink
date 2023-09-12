@@ -21,6 +21,7 @@ package org.apache.flink.table.data.conversion;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.ArrayData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.ArrayType;
 
 import java.lang.reflect.Array;
@@ -32,7 +33,7 @@ import static org.apache.commons.lang3.ClassUtils.primitiveToWrapper;
 
 /** Converter for {@link ArrayType} of {@link List} external type. */
 @Internal
-public class ArrayListConverter<E> implements DataStructureConverter<ArrayData, List<E>> {
+public class ArrayListConverter<E> implements DataTypeConverter<ArrayData, List<E>> {
 
     private static final long serialVersionUID = 1L;
 

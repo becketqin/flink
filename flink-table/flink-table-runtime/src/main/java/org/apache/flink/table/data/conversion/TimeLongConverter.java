@@ -19,11 +19,12 @@
 package org.apache.flink.table.data.conversion;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.TimeType;
 
 /** Converter for {@link TimeType} of {@link Long} external type. */
 @Internal
-public class TimeLongConverter implements DataStructureConverter<Integer, Long> {
+public class TimeLongConverter implements DataTypeConverter<Integer, Long> {
 
     private static final long serialVersionUID = 1L;
 

@@ -21,8 +21,8 @@ package org.apache.flink.table.data;
 import org.apache.flink.table.annotation.DataTypeHint;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableException;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.types.AbstractDataType;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.utils.DataTypeFactoryMock;
@@ -88,9 +88,9 @@ import static org.apache.flink.table.api.DataTypes.YEAR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Tests for {@link DataStructureConverters}. */
+/** Tests for {@link DefaultDataTypeConverters}. */
 @RunWith(Parameterized.class)
-public class DataStructureConvertersTest {
+public class DefaultDataTypeConvertersTest {
 
     @Parameters(name = "{index}: {0}")
     public static List<TestSpec> testData() {
@@ -371,13 +371,13 @@ public class DataStructureConvertersTest {
             final DataType fromDataType = testSpec.dataType.bridgedTo(from.getKey());
 
             if (testSpec.expectedErrorMessage != null) {
-                assertThatThrownBy(() -> DataStructureConverters.getConverter(fromDataType))
+                assertThatThrownBy(() -> DefaultDataTypeConverters.getConverter(fromDataType))
                         .isInstanceOf(TableException.class)
                         .hasMessage(testSpec.expectedErrorMessage);
             } else {
-                final DataStructureConverter<Object, Object> fromConverter =
-                        simulateSerialization(DataStructureConverters.getConverter(fromDataType));
-                fromConverter.open(DataStructureConvertersTest.class.getClassLoader());
+                final DataTypeConverter<Object, Object> fromConverter =
+                        simulateSerialization(DefaultDataTypeConverters.getConverter(fromDataType));
+                fromConverter.open(DefaultDataTypeConvertersTest.class.getClassLoader());
 
                 final Object internalValue = fromConverter.toInternalOrNull(from.getValue());
 
@@ -389,9 +389,9 @@ public class DataStructureConvertersTest {
                 for (Map.Entry<Class<?>, Object> to : testSpec.conversions.entrySet()) {
                     final DataType toDataType = testSpec.dataType.bridgedTo(to.getKey());
 
-                    final DataStructureConverter<Object, Object> toConverter =
-                            simulateSerialization(DataStructureConverters.getConverter(toDataType));
-                    toConverter.open(DataStructureConvertersTest.class.getClassLoader());
+                    final DataTypeConverter<Object, Object> toConverter =
+                            simulateSerialization(DefaultDataTypeConverters.getConverter(toDataType));
+                    toConverter.open(DefaultDataTypeConvertersTest.class.getClassLoader());
 
                     assertThat(toConverter.toExternalOrNull(internalValue))
                             .isEqualTo(to.getValue());
@@ -459,12 +459,12 @@ public class DataStructureConvertersTest {
         }
     }
 
-    private static DataStructureConverter<Object, Object> simulateSerialization(
-            DataStructureConverter<Object, Object> converter) {
+    private static DataTypeConverter<Object, Object> simulateSerialization(
+            DataTypeConverter<Object, Object> converter) {
         try {
             final byte[] bytes = InstantiationUtil.serializeObject(converter);
             return InstantiationUtil.deserializeObject(
-                    bytes, DataStructureConverter.class.getClassLoader());
+                    bytes, DataTypeConverter.class.getClassLoader());
         } catch (Exception e) {
             throw new AssertionError("Serialization failed.", e);
         }

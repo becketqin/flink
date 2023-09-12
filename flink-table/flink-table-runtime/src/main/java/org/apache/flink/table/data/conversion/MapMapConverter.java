@@ -25,6 +25,7 @@ import org.apache.flink.table.data.GenericMapData;
 import org.apache.flink.table.data.MapData;
 import org.apache.flink.table.data.binary.BinaryMapData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.MapType;
 import org.apache.flink.table.types.logical.MultisetType;
 
@@ -33,7 +34,7 @@ import java.util.Map;
 
 /** Converter for {@link MapType}/{@link MultisetType} of {@link Map} external type. */
 @Internal
-public class MapMapConverter<K, V> implements DataStructureConverter<MapData, Map<K, V>> {
+public class MapMapConverter<K, V> implements DataTypeConverter<MapData, Map<K, V>> {
 
     private static final long serialVersionUID = 1L;
 

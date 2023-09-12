@@ -28,6 +28,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.data.TimestampData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.types.Row;
@@ -54,7 +55,7 @@ import java.util.function.Supplier;
  * length. This might be the responsibility of data classes that are called transitively.
  */
 @Internal
-public final class DataStructureConverters {
+public final class DefaultDataTypeConverters {
 
     private static final Map<ConverterIdentifier<?>, DataStructureConverterFactory> converters =
             new HashMap<>();
@@ -197,13 +198,16 @@ public final class DataStructureConverters {
 
     /** Returns a converter for the given {@link DataType}. */
     @SuppressWarnings("unchecked")
-    public static DataStructureConverter<Object, Object> getConverter(DataType dataType) {
+    public static DataTypeConverter<Object, Object> getConverter(DataType dataType) {
         // cast to Object for ease of use
-        return (DataStructureConverter<Object, Object>) getConverterInternal(dataType);
+        return (DataTypeConverter<Object, Object>) getConverterInternal(dataType);
     }
 
-    private static DataStructureConverter<?, ?> getConverterInternal(DataType dataType) {
+    private static DataTypeConverter<?, ?> getConverterInternal(DataType dataType) {
         final LogicalType logicalType = dataType.getLogicalType();
+        if (dataType.getDataTypeConverter() != null) {
+            return dataType.getDataTypeConverter();
+        }
         final DataStructureConverterFactory factory =
                 converters.get(
                         new ConverterIdentifier<>(
@@ -251,7 +255,7 @@ public final class DataStructureConverters {
     }
 
     private static DataStructureConverterFactory constructor(
-            Supplier<DataStructureConverter<?, ?>> supplier) {
+            Supplier<DataTypeConverter<?, ?>> supplier) {
         return dataType -> supplier.get();
     }
 
@@ -295,6 +299,6 @@ public final class DataStructureConverters {
     }
 
     private interface DataStructureConverterFactory {
-        DataStructureConverter<?, ?> createConverter(DataType dt);
+        DataTypeConverter<?, ?> createConverter(DataType dt);
     }
 }

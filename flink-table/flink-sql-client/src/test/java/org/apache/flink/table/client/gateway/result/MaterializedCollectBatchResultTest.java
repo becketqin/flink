@@ -25,8 +25,8 @@ import org.apache.flink.table.client.gateway.TypedResult;
 import org.apache.flink.table.client.util.CliClientTestUtils;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.binary.BinaryRowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.types.Row;
 
@@ -49,9 +49,9 @@ class MaterializedCollectBatchResultTest extends BaseMaterializedResultTest {
                         new DataType[] {DataTypes.STRING(), DataTypes.INT()});
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        final DataStructureConverter<RowData, Row> rowConverter =
-                (DataStructureConverter)
-                        DataStructureConverters.getConverter(schema.toPhysicalRowDataType());
+        final DataTypeConverter<RowData, Row> rowConverter =
+                (DataTypeConverter)
+                        DefaultDataTypeConverters.getConverter(schema.toPhysicalRowDataType());
 
         try (TestMaterializedCollectBatchResult result =
                 new TestMaterializedCollectBatchResult(
@@ -120,9 +120,9 @@ class MaterializedCollectBatchResultTest extends BaseMaterializedResultTest {
                         new DataType[] {DataTypes.STRING(), DataTypes.INT()});
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        final DataStructureConverter<RowData, Row> rowConverter =
-                (DataStructureConverter)
-                        DataStructureConverters.getConverter(schema.toPhysicalRowDataType());
+        final DataTypeConverter<RowData, Row> rowConverter =
+                (DataTypeConverter)
+                        DefaultDataTypeConverters.getConverter(schema.toPhysicalRowDataType());
 
         try (TestMaterializedCollectBatchResult result =
                 new TestMaterializedCollectBatchResult(

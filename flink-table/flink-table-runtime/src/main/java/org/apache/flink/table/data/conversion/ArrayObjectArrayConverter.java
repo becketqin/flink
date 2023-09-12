@@ -25,6 +25,7 @@ import org.apache.flink.table.data.binary.BinaryArrayData;
 import org.apache.flink.table.data.writer.BinaryArrayWriter;
 import org.apache.flink.table.data.writer.BinaryWriter;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.ArrayType;
 import org.apache.flink.table.types.logical.DistinctType;
 import org.apache.flink.table.types.logical.LogicalType;
@@ -39,7 +40,7 @@ import static org.apache.commons.lang3.ClassUtils.primitiveToWrapper;
 /** Converter for {@link ArrayType} of nested primitive or object arrays external types. */
 @Internal
 @SuppressWarnings("unchecked")
-public class ArrayObjectArrayConverter<E> implements DataStructureConverter<ArrayData, E[]> {
+public class ArrayObjectArrayConverter<E> implements DataTypeConverter<ArrayData, E[]> {
 
     private static final long serialVersionUID = 1L;
 
@@ -61,7 +62,7 @@ public class ArrayObjectArrayConverter<E> implements DataStructureConverter<Arra
 
     final ArrayData.ElementGetter elementGetter;
 
-    final DataStructureConverter<Object, E> elementConverter;
+    final DataTypeConverter<Object, E> elementConverter;
 
     private ArrayObjectArrayConverter(
             Class<E> elementClass,
@@ -70,7 +71,7 @@ public class ArrayObjectArrayConverter<E> implements DataStructureConverter<Arra
             BinaryWriter.ValueSetter writerValueSetter,
             GenericToJavaArrayConverter<E> genericToJavaArrayConverter,
             ArrayData.ElementGetter elementGetter,
-            DataStructureConverter<Object, E> elementConverter) {
+            DataTypeConverter<Object, E> elementConverter) {
         this.elementClass = elementClass;
         this.elementSize = elementSize;
         this.writerNullSetter = writerNullSetter;
@@ -174,8 +175,8 @@ public class ArrayObjectArrayConverter<E> implements DataStructureConverter<Arra
                 BinaryWriter.createValueSetter(elementType),
                 createGenericToJavaArrayConverter(elementType),
                 ArrayData.createElementGetter(elementType),
-                (DataStructureConverter<Object, E>)
-                        DataStructureConverters.getConverter(elementDataType));
+                (DataTypeConverter<Object, E>)
+                        DefaultDataTypeConverters.getConverter(elementDataType));
     }
 
     @SuppressWarnings("unchecked")

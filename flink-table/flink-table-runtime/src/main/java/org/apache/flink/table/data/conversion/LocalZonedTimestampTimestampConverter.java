@@ -20,6 +20,7 @@ package org.apache.flink.table.data.conversion;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.TimestampData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LocalZonedTimestampType;
 
 import java.sql.Timestamp;
@@ -27,7 +28,7 @@ import java.sql.Timestamp;
 /** Converter for {@link LocalZonedTimestampType} of {@link java.sql.Timestamp} external type. */
 @Internal
 public class LocalZonedTimestampTimestampConverter
-        implements DataStructureConverter<TimestampData, Timestamp> {
+        implements DataTypeConverter<TimestampData, Timestamp> {
 
     private static final long serialVersionUID = 1L;
     private static final int NANOS_PER_MILL = 1000_000;

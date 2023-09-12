@@ -20,8 +20,8 @@ package org.apache.flink.table.client.gateway.result;
 
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.binary.BinaryRowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.runtime.typeutils.RowDataSerializer;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BaseMaterializedResultTest {
 
     static Function<Row, BinaryRowData> createInternalBinaryRowDataConverter(DataType dataType) {
-        DataStructureConverter<Object, Object> converter =
-                DataStructureConverters.getConverter(dataType);
+        DataTypeConverter<Object, Object> converter =
+                DefaultDataTypeConverters.getConverter(dataType);
         RowDataSerializer serializer = new RowDataSerializer((RowType) dataType.getLogicalType());
 
         return row -> serializer.toBinaryRow((RowData) converter.toInternalOrNull(row)).copy();
@@ -46,7 +46,7 @@ class BaseMaterializedResultTest {
     static void assertRowEquals(
             List<Row> expected,
             List<RowData> actual,
-            DataStructureConverter<RowData, Row> converter) {
+            DataTypeConverter<RowData, Row> converter) {
         assertThat(actual.stream().map(converter::toExternalOrNull).collect(Collectors.toList()))
                 .isEqualTo(expected);
     }

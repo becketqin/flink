@@ -19,10 +19,12 @@
 package org.apache.flink.table.data.conversion;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+
 
 /** No-op converter that just forwards its input. */
 @Internal
-public class IdentityConverter<I> implements DataStructureConverter<I, I> {
+public class IdentityConverter<I> implements DataTypeConverter<I, I> {
 
     private static final long serialVersionUID = 1L;
 

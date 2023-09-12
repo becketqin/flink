@@ -33,8 +33,8 @@ import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.data.conversion.RowRowConverter;
 import org.apache.flink.table.operations.CallProcedureOperation;
 import org.apache.flink.table.operations.Operation;
@@ -145,8 +145,8 @@ public class PlannerCallProcedureOperation implements CallProcedureOperation {
             // which means the converted Flink internal value doesn't
             // match the expected input type, then we need to convert the Flink
             // internal value to external value
-            DataStructureConverter<Object, Object> converter =
-                    DataStructureConverters.getConverter(inputType);
+            DataTypeConverter<Object, Object> converter =
+                    DefaultDataTypeConverters.getConverter(inputType);
             converter.open(classLoader);
             return converter.toExternal(internalValue);
         } else {
@@ -274,8 +274,8 @@ public class PlannerCallProcedureOperation implements CallProcedureOperation {
                                 .isEnabled(),
                         new CodeGeneratorContext(tableConfig, userClassLoader));
         // create DataStructure converters
-        DataStructureConverter<Object, Object> converter =
-                DataStructureConverters.getConverter(outputType);
+        DataTypeConverter<Object, Object> converter =
+                DefaultDataTypeConverters.getConverter(outputType);
         converter.open(userClassLoader);
 
         return TableResultImpl.builder()
@@ -301,7 +301,7 @@ public class PlannerCallProcedureOperation implements CallProcedureOperation {
     /** A result provider for the result of calling procedure. */
     static final class CallProcedureResultProvider implements ResultProvider {
 
-        private final DataStructureConverter<Object, Object> converter;
+        private final DataTypeConverter<Object, Object> converter;
         private final RowDataToStringConverter toStringConverter;
 
         // a converter to convert internal RowData to Row
@@ -309,7 +309,7 @@ public class PlannerCallProcedureOperation implements CallProcedureOperation {
         private final Object[] result;
 
         public CallProcedureResultProvider(
-                DataStructureConverter<Object, Object> converter,
+                DataTypeConverter<Object, Object> converter,
                 RowDataToStringConverter toStringConverter,
                 @Nullable RowRowConverter rowConverter,
                 Object result) {

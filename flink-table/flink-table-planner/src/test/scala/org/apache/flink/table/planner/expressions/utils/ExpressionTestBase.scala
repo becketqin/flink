@@ -30,7 +30,6 @@ import org.apache.flink.table.api.bridge.java.internal.StreamTableEnvironmentImp
 import org.apache.flink.table.api.config.ExecutionConfigOptions
 import org.apache.flink.table.data.RowData
 import org.apache.flink.table.data.binary.BinaryRowData
-import org.apache.flink.table.data.conversion.{DataStructureConverter, DataStructureConverters}
 import org.apache.flink.table.data.util.DataFormatConverters
 import org.apache.flink.table.data.util.DataFormatConverters.DataFormatConverter
 import org.apache.flink.table.expressions.Expression
@@ -52,6 +51,8 @@ import org.apache.calcite.rel.logical.LogicalCalc
 import org.apache.calcite.rel.rules._
 import org.apache.calcite.rex.RexNode
 import org.apache.calcite.sql.`type`.SqlTypeName.VARCHAR
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters
+import org.apache.flink.table.types.conversion.DataTypeConverter
 import org.assertj.core.api.Assertions.{assertThatExceptionOfType, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
 import org.junit.jupiter.api.{AfterEach, BeforeEach}
@@ -250,9 +251,9 @@ abstract class ExpressionTestBase(isStreaming: Boolean = true) {
         .asInstanceOf[DataFormatConverter[RowData, Row]]
       converter.toInternal(testData)
     } else {
-      val converter = DataStructureConverters
+      val converter = DefaultDataTypeConverters
         .getConverter(resolvedDataType)
-        .asInstanceOf[DataStructureConverter[RowData, Row]]
+        .asInstanceOf[DataTypeConverter[RowData, Row]]
       converter.open(getClass.getClassLoader)
       converter.toInternalOrNull(testData)
     }

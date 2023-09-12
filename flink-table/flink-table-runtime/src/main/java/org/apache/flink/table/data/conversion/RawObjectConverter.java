@@ -23,13 +23,14 @@ import org.apache.flink.api.common.serialization.SerializerConfigImpl;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.table.data.RawValueData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RawType;
 import org.apache.flink.table.types.logical.TypeInformationRawType;
 
 /** Converter for {@link RawType} of object external type. */
 @Internal
-public class RawObjectConverter<T> implements DataStructureConverter<RawValueData<T>, T> {
+public class RawObjectConverter<T> implements DataTypeConverter<RawValueData<T>, T> {
 
     private static final long serialVersionUID = 1L;
 

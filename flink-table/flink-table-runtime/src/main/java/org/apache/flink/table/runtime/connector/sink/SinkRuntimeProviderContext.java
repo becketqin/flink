@@ -21,7 +21,7 @@ package org.apache.flink.table.runtime.connector.sink;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
@@ -70,7 +70,7 @@ public final class SinkRuntimeProviderContext implements DynamicTableSink.Contex
             DataType consumedDataType) {
         validateOutputDataType(consumedDataType);
         return new DataStructureConverterWrapper(
-                DataStructureConverters.getConverter(consumedDataType));
+                DefaultDataTypeConverters.getConverter(consumedDataType));
     }
 
     @Override

@@ -28,7 +28,7 @@ import org.apache.flink.streaming.api.functions.async.ResultFuture;
 import org.apache.flink.streaming.api.functions.async.RichAsyncFunction;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.data.utils.JoinedRowData;
 import org.apache.flink.table.runtime.collector.TableFunctionResultFuture;
 import org.apache.flink.table.runtime.generated.FilterCondition;
@@ -48,7 +48,7 @@ public class AsyncLookupJoinRunner extends RichAsyncFunction<RowData, RowData> {
     private static final long serialVersionUID = -6664660022391632480L;
 
     private final GeneratedFunction<AsyncFunction<RowData, Object>> generatedFetcher;
-    private final DataStructureConverter<RowData, Object> fetcherConverter;
+    private final DataTypeConverter<RowData, Object> fetcherConverter;
     private final GeneratedResultFuture<TableFunctionResultFuture<RowData>> generatedResultFuture;
     private final GeneratedFunction<FilterCondition> generatedPreFilterCondition;
 
@@ -75,7 +75,7 @@ public class AsyncLookupJoinRunner extends RichAsyncFunction<RowData, RowData> {
 
     public AsyncLookupJoinRunner(
             GeneratedFunction<AsyncFunction<RowData, Object>> generatedFetcher,
-            DataStructureConverter<RowData, Object> fetcherConverter,
+            DataTypeConverter<RowData, Object> fetcherConverter,
             GeneratedResultFuture<TableFunctionResultFuture<RowData>> generatedResultFuture,
             GeneratedFunction<FilterCondition> generatedPreFilterCondition,
             RowDataSerializer rightRowSerializer,
@@ -189,7 +189,7 @@ public class AsyncLookupJoinRunner extends RichAsyncFunction<RowData, RowData> {
 
         private final BlockingQueue<JoinedRowResultFuture> resultFutureBuffer;
         private final TableFunctionResultFuture<RowData> joinConditionResultFuture;
-        private final DataStructureConverter<RowData, Object> resultConverter;
+        private final DataTypeConverter<RowData, Object> resultConverter;
         private final boolean isLeftOuterJoin;
 
         private final DelegateResultFuture delegate;
@@ -201,7 +201,7 @@ public class AsyncLookupJoinRunner extends RichAsyncFunction<RowData, RowData> {
         private JoinedRowResultFuture(
                 BlockingQueue<JoinedRowResultFuture> resultFutureBuffer,
                 TableFunctionResultFuture<RowData> joinConditionResultFuture,
-                DataStructureConverter<RowData, Object> resultConverter,
+                DataTypeConverter<RowData, Object> resultConverter,
                 boolean isLeftOuterJoin,
                 int rightArity) {
             this.resultFutureBuffer = resultFutureBuffer;

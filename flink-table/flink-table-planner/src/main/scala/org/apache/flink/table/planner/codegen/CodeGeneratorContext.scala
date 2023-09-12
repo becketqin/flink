@@ -21,7 +21,7 @@ import org.apache.flink.api.common.functions.Function
 import org.apache.flink.api.common.typeutils.TypeSerializer
 import org.apache.flink.configuration.ReadableConfig
 import org.apache.flink.table.data.GenericRowData
-import org.apache.flink.table.data.conversion.{DataStructureConverter, DataStructureConverters}
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters
 import org.apache.flink.table.functions.{FunctionContext, TableFunction, UserDefinedFunction}
 import org.apache.flink.table.planner.codegen.CodeGenUtils._
 import org.apache.flink.table.planner.codegen.GenerateUtils.generateRecordStatement
@@ -30,6 +30,7 @@ import org.apache.flink.table.runtime.operators.TableStreamOperator
 import org.apache.flink.table.runtime.typeutils.{ExternalSerializer, InternalSerializers}
 import org.apache.flink.table.runtime.util.collections._
 import org.apache.flink.table.types.DataType
+import org.apache.flink.table.types.conversion.DataTypeConverter
 import org.apache.flink.table.types.logical._
 import org.apache.flink.table.types.logical.LogicalTypeRoot._
 import org.apache.flink.table.utils.DateTimeUtils
@@ -863,7 +864,7 @@ class CodeGeneratorContext(
   }
 
   /**
-   * Adds a reusable [[DataStructureConverter]] to the member area of the generated class.
+   * Adds a reusable [[DataTypeConverter]] to the member area of the generated class.
    *
    * @param dataType
    *   converter to be added
@@ -876,7 +877,7 @@ class CodeGeneratorContext(
         term
 
       case None =>
-        val converter = DataStructureConverters.getConverter(dataType)
+        val converter = DefaultDataTypeConverters.getConverter(dataType)
         val converterTerm = addReusableObject(converter, "converter")
         val openConverter = if (classLoaderTerm != null) {
           s"""

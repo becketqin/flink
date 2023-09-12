@@ -34,8 +34,8 @@ import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.binary.BinaryStringData;
-import org.apache.flink.table.data.conversion.DataStructureConverter;
-import org.apache.flink.table.data.conversion.DataStructureConverters;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
+import org.apache.flink.table.data.conversion.DefaultDataTypeConverters;
 import org.apache.flink.table.runtime.collector.TableFunctionCollector;
 import org.apache.flink.table.runtime.collector.TableFunctionResultFuture;
 import org.apache.flink.table.runtime.generated.GeneratedFunctionWrapper;
@@ -108,8 +108,8 @@ public class AsyncLookupJoinHarnessTest {
                     .bridgedTo(RowData.class);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private final DataStructureConverter<RowData, Object> fetcherConverter =
-            (DataStructureConverter) DataStructureConverters.getConverter(rightRowDataType);
+    private final DataTypeConverter<RowData, Object> fetcherConverter =
+            (DataTypeConverter) DefaultDataTypeConverters.getConverter(rightRowDataType);
 
     private final RowDataSerializer rightRowSerializer =
             (RowDataSerializer)

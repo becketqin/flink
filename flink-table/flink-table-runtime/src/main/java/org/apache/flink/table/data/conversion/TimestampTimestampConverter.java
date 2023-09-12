@@ -18,14 +18,17 @@
 
 package org.apache.flink.table.data.conversion;
 
+import java.sql.Timestamp;
+
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.TimestampData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.TimestampType;
 
 /** Converter for {@link TimestampType} of {@link java.sql.Timestamp} external type. */
 @Internal
 public class TimestampTimestampConverter
-        implements DataStructureConverter<TimestampData, java.sql.Timestamp> {
+        implements DataTypeConverter<TimestampData, Timestamp> {
 
     private static final long serialVersionUID = 1L;
 

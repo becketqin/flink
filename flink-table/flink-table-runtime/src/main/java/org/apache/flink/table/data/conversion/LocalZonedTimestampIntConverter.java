@@ -20,12 +20,13 @@ package org.apache.flink.table.data.conversion;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.table.data.TimestampData;
+import org.apache.flink.table.types.conversion.DataTypeConverter;
 import org.apache.flink.table.types.logical.LocalZonedTimestampType;
 
 /** Converter for {@link LocalZonedTimestampType} of {@link Integer} external type. */
 @Internal
 public class LocalZonedTimestampIntConverter
-        implements DataStructureConverter<TimestampData, Integer> {
+        implements DataTypeConverter<TimestampData, Integer> {
 
     private static final long serialVersionUID = 1L;
 
