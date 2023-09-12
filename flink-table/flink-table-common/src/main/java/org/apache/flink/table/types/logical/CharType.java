@@ -56,7 +56,10 @@ public final class CharType extends LogicalType {
 
     private static final Set<String> INPUT_OUTPUT_CONVERSION =
             conversionSet(
-                    String.class.getName(), byte[].class.getName(), StringData.class.getName());
+                    CharSequence.class.getName(),
+                    String.class.getName(),
+                    byte[].class.getName(),
+                    StringData.class.getName());
 
     private static final Class<?> DEFAULT_CONVERSION = String.class;
 

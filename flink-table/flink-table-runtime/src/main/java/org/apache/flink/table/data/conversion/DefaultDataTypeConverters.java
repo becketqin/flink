@@ -62,10 +62,14 @@ public final class DefaultDataTypeConverters {
 
     static {
         // ordered by type root and conversion class definition
+        putConverter(
+                LogicalTypeRoot.CHAR, CharSequence.class, constructor(StringCharSequenceConverter::new));
         putConverter(LogicalTypeRoot.CHAR, String.class, constructor(StringStringConverter::new));
         putConverter(
                 LogicalTypeRoot.CHAR, byte[].class, constructor(StringByteArrayConverter::new));
         putConverter(LogicalTypeRoot.CHAR, StringData.class, identity());
+        putConverter(
+                LogicalTypeRoot.VARCHAR, CharSequence.class, constructor(StringCharSequenceConverter::new));
         putConverter(
                 LogicalTypeRoot.VARCHAR, String.class, constructor(StringStringConverter::new));
         putConverter(

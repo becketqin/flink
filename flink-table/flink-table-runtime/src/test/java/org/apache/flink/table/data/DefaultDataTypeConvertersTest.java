@@ -97,10 +97,12 @@ public class DefaultDataTypeConvertersTest {
         // ordered by definition in DataStructureConverters
         return asList(
                 TestSpec.forDataType(CHAR(5))
+                        .convertedTo(CharSequence.class, "12345")
                         .convertedTo(String.class, "12345")
                         .convertedTo(byte[].class, "12345".getBytes(StandardCharsets.UTF_8))
                         .convertedTo(StringData.class, StringData.fromString("12345")),
                 TestSpec.forDataType(VARCHAR(100))
+                        .convertedTo(CharSequence.class, "12345")
                         .convertedTo(String.class, "12345")
                         .convertedTo(byte[].class, "12345".getBytes(StandardCharsets.UTF_8))
                         .convertedTo(StringData.class, StringData.fromString("12345")),
