@@ -27,7 +27,7 @@ import org.joda.time.LocalTime;
  * Encapsulates joda optional dependency. Instantiates this class only if joda is available on the
  * classpath.
  */
-class JodaConverter {
+public class JodaConverter {
 
     private static JodaConverter instance;
     private static boolean instantiated = false;

@@ -18,21 +18,24 @@
 
 package org.apache.flink.formats.avro.typeutils;
 
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.common.typeutils.base.VoidSerializer;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.formats.avro.AvroFormatOptions.AvroEncoding;
+import org.apache.flink.api.java.typeutils.runtime.kryo.KryoSerializer;
 import org.apache.flink.formats.avro.generated.User;
+import org.apache.flink.formats.avro.generated.UserForSql;
 import org.apache.flink.formats.avro.utils.AvroTestUtils;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.types.AtomicDataType;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.RawType;
 import org.apache.flink.table.types.logical.RowType;
-import org.apache.flink.table.types.logical.TypeInformationRawType;
 import org.apache.flink.types.Row;
 
 import org.apache.avro.Schema;
@@ -69,8 +72,8 @@ class AvroSchemaConverterTest {
 
     @Test
     void testConvertAvroSchemaToDataType() {
-        final String schema = User.getClassSchema().toString(true);
-        validateUserSchema(AvroSchemaConverter.convertToDataType(schema));
+        final String schema = UserForSql.getClassSchema().toString(true);
+        validateUserForSqlSchema(AvroSchemaConverter.convertToDataType(schema));
     }
 
     @ParameterizedTest
@@ -138,7 +141,7 @@ class AvroSchemaConverterTest {
 
         assertThatThrownBy(() -> AvroSchemaConverter.convertToSchema(rowType))
                 .isInstanceOf(UnsupportedOperationException.class)
-                .hasMessageStartingWith("Unsupported to derive Schema for type: RAW");
+                .hasMessageStartingWith("The schema for RAW type should not be null.");
     }
 
     @Test
@@ -647,10 +650,10 @@ class AvroSchemaConverterTest {
         final TypeInformation<Row> timestamps =
                 Types.ROW_NAMED(
                         new String[] {
-                            "type_timestamp_millis",
-                            "type_timestamp_micros",
-                            "type_local_timestamp_millis",
-                            "type_local_timestamp_micros"
+                                "type_timestamp_millis",
+                                "type_timestamp_micros",
+                                "type_local_timestamp_millis",
+                                "type_local_timestamp_micros"
                         },
                         Types.INSTANT,
                         Types.INSTANT,
@@ -664,10 +667,10 @@ class AvroSchemaConverterTest {
         final TypeInformation<Row> timestamps =
                 Types.ROW_NAMED(
                         new String[] {
-                            "type_timestamp_millis",
-                            "type_timestamp_micros",
-                            "type_local_timestamp_millis",
-                            "type_local_timestamp_micros"
+                                "type_timestamp_millis",
+                                "type_timestamp_micros",
+                                "type_local_timestamp_millis",
+                                "type_local_timestamp_micros"
                         },
                         Types.SQL_TIMESTAMP,
                         Types.SQL_TIMESTAMP,
@@ -715,7 +718,7 @@ class AvroSchemaConverterTest {
         assertThat(actual).isEqualTo(timestamps);
     }
 
-    private void validateUserSchema(DataType actual) {
+    private void validateUserForSqlSchema(DataType actual) {
         final DataType address =
                 DataTypes.ROW(
                         DataTypes.FIELD("num", DataTypes.INT().notNull()),
@@ -731,7 +734,6 @@ class AvroSchemaConverterTest {
                                 DataTypes.FIELD("favorite_color", DataTypes.STRING()),
                                 DataTypes.FIELD("type_long_test", DataTypes.BIGINT()),
                                 DataTypes.FIELD("type_double_test", DataTypes.DOUBLE().notNull()),
-                                DataTypes.FIELD("type_null_test", DataTypes.NULL()),
                                 DataTypes.FIELD("type_bool_test", DataTypes.BOOLEAN().notNull()),
                                 DataTypes.FIELD(
                                         "type_array_string",
@@ -753,14 +755,16 @@ class AvroSchemaConverterTest {
                                 DataTypes.FIELD(
                                         "type_union",
                                         new AtomicDataType(
-                                                new TypeInformationRawType<>(
-                                                        false, Types.GENERIC(Object.class)),
-                                                Object.class)),
+                                                new RawType<>(
+                                                        false,
+                                                        Object.class,
+                                                        new KryoSerializer<>(
+                                                                Object.class,
+                                                                new ExecutionConfig())))),
                                 DataTypes.FIELD("type_nested", address),
                                 DataTypes.FIELD("type_bytes", DataTypes.BYTES().notNull()),
                                 DataTypes.FIELD("type_date", DataTypes.DATE().notNull()),
                                 DataTypes.FIELD("type_time_millis", DataTypes.TIME(3).notNull()),
-                                DataTypes.FIELD("type_time_micros", DataTypes.TIME(6).notNull()),
                                 DataTypes.FIELD(
                                         "type_timestamp_millis", DataTypes.TIMESTAMP(3).notNull()),
                                 DataTypes.FIELD(

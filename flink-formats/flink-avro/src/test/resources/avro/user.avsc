@@ -48,6 +48,42 @@
      {"name": "type_decimal_fixed", "type": {"name": "Fixed2", "size": 2, "type": "fixed", "logicalType": "decimal", "precision": 4, "scale": 2}}
  ]
 },
+/**
+ * This schema is used to test the Avro support in Flink SQL. As of now, Flink SQL
+ * has the following known limitations, so we removed the following fields from the
+ * full User scehma.
+ * 1. type_time_millis: Avro logical type of time-micros is not supported yet.
+ * 2. type_null_test: The pure null type is not supported.
+ */
+{"namespace": "org.apache.flink.formats.avro.generated",
+  "type": "record",
+  "name": "UserForSql",
+  "fields": [
+    {"name": "name", "type": "string"},
+    {"name": "favorite_number",  "type": ["int", "null"]},
+    {"name": "favorite_color", "type": ["string", "null"]},
+    {"name": "type_long_test", "type": ["long", "null"]},
+    {"name": "type_double_test", "type": "double"},
+    {"name": "type_bool_test", "type": ["boolean"]},
+    {"name": "type_array_string", "type" : {"type" : "array", "items" : "string"}},
+    {"name": "type_array_boolean", "type" : {"type" : "array", "items" : "boolean"}},
+    {"name": "type_nullable_array", "type": ["null", {"type":"array", "items":"string"}], "default":null},
+    {"name": "type_enum", "type": "Colors"},
+    {"name": "type_map", "type": {"type": "map", "values": "long"}},
+    {"name": "type_fixed",
+      "size": 16,
+      "type": ["null", "Fixed16"]},
+    {"name": "type_union", "type": ["null", "boolean", "long", "double"]},
+    {"name": "type_nested", "type": ["null", "Address"]},
+    {"name": "type_bytes", "type": "bytes"},
+    {"name": "type_date", "type": {"type": "int", "logicalType": "date"}},
+    {"name": "type_time_millis", "type": {"type": "int", "logicalType": "time-millis"}},
+    {"name": "type_timestamp_millis", "type": {"type": "long", "logicalType": "timestamp-millis"}},
+    {"name": "type_timestamp_micros", "type": {"type": "long", "logicalType": "timestamp-micros"}},
+    {"name": "type_decimal_bytes", "type": {"type": "bytes", "logicalType": "decimal", "precision": 4, "scale": 2}},
+    {"name": "type_decimal_fixed", "type": "Fixed2"}
+  ]
+},
  {"namespace": "org.apache.flink.formats.avro.generated",
   "type": "record",
   "name": "SimpleRecord",
