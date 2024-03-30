@@ -83,5 +83,21 @@ public class AvroFormatOptions {
                                     + "you can obtain the correct mapping by disable using this legacy mapping."
                                     + " Use legacy behavior by default for compatibility consideration.");
 
+    public static final ConfigOption<String> AVRO_SCHEMA =
+            ConfigOptions.key("schema")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription(
+                            "For a source table, this config provides an optional Avro reader schema string. "
+                                    + "By default, Flink table will generate an Avro reader schema for "
+                                    + "a table according to the defined Flink table schema. However, "
+                                    + "the generated schema has some limitations."
+                                    + " For example, it may not have the wanted default value for a field."
+                                    + " In that case, users can provide the intended Avro reader schema using "
+                                    + " this config to help generate a more accurate reader schema."
+                                    + "For a sink table, this config specifies the Avro schema for the "
+                                    + "records written to the table, while by default an internally generated "
+                                    + "Avro schema which is based on the Flink SQL Sink table schema will be used.");
+
     private AvroFormatOptions() {}
 }

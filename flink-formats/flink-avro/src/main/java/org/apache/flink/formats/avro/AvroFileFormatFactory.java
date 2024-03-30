@@ -43,12 +43,15 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaParseException;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
+
+import javax.annotation.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -57,6 +60,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static org.apache.flink.formats.avro.AvroFormatOptions.AVRO_OUTPUT_CODEC;
+import static org.apache.flink.formats.avro.AvroFormatOptions.AVRO_SCHEMA;
 import static org.apache.flink.formats.avro.AvroFormatOptions.AVRO_TIMESTAMP_LEGACY_MAPPING;
 
 /** Avro format factory for file system. */
@@ -68,7 +72,8 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
     @Override
     public BulkDecodingFormat<RowData> createDecodingFormat(
             DynamicTableFactory.Context context, ReadableConfig formatOptions) {
-        return new AvroBulkDecodingFormat();
+        Schema schema = getSchemaFromOptions(formatOptions);
+        return new AvroBulkDecodingFormat(schema);
     }
 
     @Override
@@ -85,11 +90,24 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
             public BulkWriter.Factory<RowData> createRuntimeEncoder(
                     DynamicTableSink.Context context, DataType consumedDataType) {
                 return new RowDataAvroWriterFactory(
-                        (RowType) consumedDataType.getLogicalType(),
-                        formatOptions.get(AVRO_OUTPUT_CODEC),
-                        formatOptions.get(AVRO_TIMESTAMP_LEGACY_MAPPING));
+                        (RowType) consumedDataType.getLogicalType(), formatOptions);
             }
         };
+    }
+
+    private static Schema getSchemaFromOptions(ReadableConfig formatOptions) {
+        return formatOptions
+                .getOptional(AVRO_SCHEMA)
+                .map(
+                        schemaString -> {
+                            try {
+                                return new Schema.Parser().parse(schemaString);
+                            } catch (SchemaParseException e) {
+                                throw new IllegalArgumentException(
+                                        "Could not parse Avro schema string.", e);
+                            }
+                        })
+                .orElse(null);
     }
 
     @Override
@@ -107,6 +125,7 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(AVRO_OUTPUT_CODEC);
         options.add(AVRO_TIMESTAMP_LEGACY_MAPPING);
+        options.add(AVRO_SCHEMA);
         return options;
     }
 
@@ -118,6 +137,11 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
     private static class AvroBulkDecodingFormat
             implements BulkDecodingFormat<RowData>,
                     ProjectableDecodingFormat<BulkFormat<RowData, FileSourceSplit>> {
+        private final @Nullable Schema fullReaderSchema;
+
+        private AvroBulkDecodingFormat(@Nullable Schema fullReaderSchema) {
+            this.fullReaderSchema = fullReaderSchema;
+        }
 
         @Override
         public BulkFormat<RowData, FileSourceSplit> createRuntimeDecoder(
@@ -131,13 +155,28 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
             //
             // for detailed discussion see comments in https://github.com/apache/flink/pull/18657
             DataType producedDataType = Projection.of(projections).project(physicalDataType);
+            Schema actualReaderSchema =
+                    getActualReaderSchema(
+                            (RowType) producedDataType.getLogicalType(), fullReaderSchema);
             return new AvroGenericRecordBulkFormat(
-                    context, (RowType) producedDataType.getLogicalType().copy(false));
+                    context,
+                    (RowType) producedDataType.getLogicalType().copy(false),
+                    actualReaderSchema);
         }
 
         @Override
         public ChangelogMode getChangelogMode() {
             return ChangelogMode.insertOnly();
+        }
+
+        private Schema getActualReaderSchema(
+                RowType producedRowType, @Nullable Schema fullReaderSchema) {
+            if (fullReaderSchema == null) {
+                return AvroSchemaConverter.convertToSchema(producedRowType);
+            } else {
+                return AvroSchemaConverter.convertToSchema(
+                        producedRowType, fullReaderSchema.getName(), fullReaderSchema);
+            }
         }
     }
 
@@ -150,8 +189,8 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
         private final TypeInformation<RowData> producedTypeInfo;
 
         public AvroGenericRecordBulkFormat(
-                DynamicTableSource.Context context, RowType producedRowType) {
-            super(AvroSchemaConverter.convertToSchema(producedRowType));
+                DynamicTableSource.Context context, RowType producedRowType, Schema readerSchema) {
+            super(readerSchema);
             this.producedRowType = producedRowType;
             this.producedTypeInfo = context.createTypeInformation(producedRowType);
         }
@@ -184,9 +223,12 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
 
         private final AvroWriterFactory<GenericRecord> factory;
         private final RowType rowType;
+        private final Schema avroSchema;
 
-        private RowDataAvroWriterFactory(
-                RowType rowType, String codec, boolean legacyTimestampMapping) {
+        private RowDataAvroWriterFactory(RowType rowType, ReadableConfig formatOptions) {
+            String codec = formatOptions.get(AVRO_OUTPUT_CODEC);
+            boolean legacyTimestampMapping = formatOptions.get(AVRO_TIMESTAMP_LEGACY_MAPPING);
+            this.avroSchema = getSchemaFromOptions(formatOptions);
             this.rowType = rowType;
             this.factory =
                     new AvroWriterFactory<>(
@@ -195,8 +237,14 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
                                 public DataFileWriter<GenericRecord> createWriter(OutputStream out)
                                         throws IOException {
                                     Schema schema =
-                                            AvroSchemaConverter.convertToSchema(
-                                                    rowType, legacyTimestampMapping);
+                                            avroSchema == null
+                                                    ? AvroSchemaConverter.convertToSchema(rowType, legacyTimestampMapping)
+                                                    : AvroSchemaConverter.convertToSchema(
+                                                            rowType,
+                                                            avroSchema.getName(),
+                                                            legacyTimestampMapping,
+                                                            avroSchema,
+                                                            null);
                                     DatumWriter<GenericRecord> datumWriter =
                                             new GenericDatumWriter<>(schema);
                                     DataFileWriter<GenericRecord> dataFileWriter =
@@ -216,7 +264,11 @@ public class AvroFileFormatFactory implements BulkReaderFormatFactory, BulkWrite
             BulkWriter<GenericRecord> writer = factory.create(out);
             RowDataToAvroConverters.RowDataToAvroConverter converter =
                     RowDataToAvroConverters.createConverter(rowType);
-            Schema schema = AvroSchemaConverter.convertToSchema(rowType);
+            Schema schema =
+                    avroSchema == null
+                            ? AvroSchemaConverter.convertToSchema(rowType)
+                            : AvroSchemaConverter.convertToSchema(
+                                    rowType, avroSchema.getName(), avroSchema);
             return new BulkWriter<RowData>() {
 
                 @Override

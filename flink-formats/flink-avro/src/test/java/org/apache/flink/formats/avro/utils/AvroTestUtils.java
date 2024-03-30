@@ -62,9 +62,15 @@ public final class AvroTestUtils {
     /** Tests all Avro data types as well as nested types for a specific record. */
     public static Tuple3<Class<? extends SpecificRecord>, SpecificRecord, Row>
             getSpecificTestData() {
+        return getSpecificTestData(42);
+    }
+
+    /** Tests all Avro data types as well as nested types for a specific record. */
+    public static Tuple3<Class<? extends SpecificRecord>, SpecificRecord, Row> getSpecificTestData(
+            int addrNumber) {
         final Address addr =
                 Address.newBuilder()
-                        .setNum(42)
+                        .setNum(addrNumber)
                         .setStreet("Main Street 42")
                         .setCity("Test City")
                         .setState("Test State")
@@ -72,7 +78,7 @@ public final class AvroTestUtils {
                         .build();
 
         final Row rowAddr = new Row(5);
-        rowAddr.setField(0, 42);
+        rowAddr.setField(0, addrNumber);
         rowAddr.setField(1, "Main Street 42");
         rowAddr.setField(2, "Test City");
         rowAddr.setField(3, "Test State");
