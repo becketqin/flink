@@ -300,7 +300,11 @@ class InitOutputPathTest {
 
             final File file = pathToFile(filePath);
             createAwaitLatch.trigger();
-            createTriggerLatch.await();
+            try {
+                createTriggerLatch.await();
+            } catch (final InterruptedException e) {
+                // do nothing
+            }
             return new LocalDataOutputStream(file);
         }
 
